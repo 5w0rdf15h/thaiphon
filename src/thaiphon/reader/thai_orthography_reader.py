@@ -30,11 +30,11 @@ MAITAIKHU = "็"
 SARA_AM = "ำ"
 
 PREPOSED_VOWELS = {"เ", "แ", "โ", "ใ", "ไ"}  # appear before onset
-POSTPOSED_VOWELS = {"ะ", "า", "ิ", "ี", "ึ", "ื", "ุ", "ู"}  # appear after onset
+POSTPOSED_VOWELS = {"ะ", "า", "ิ", "ี", "ึ", "ื", "ุ", "ู", "ๅ"}  # appear after onset
 # Add sara a-close (ั) to "marks above/below" so syllable splitting can treat it like other marks
-ABOVE_BELOW_SIGNS = {"็", "่", "้", "๊", "๋", "์", "ํ", "ั", "ิ", "ี", "ึ", "ื", "ุ", "ู"}
-# Thai consonants (basic)
-THAI_CONSONANTS = set("กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ")
+ABOVE_BELOW_SIGNS = {"็", "่", "้", "๊", "๋", "์", "ํ", "ั", "ิ", "ี", "ึ", "ื", "ุ", "ู", "ๅ"}
+# Thai consonants
+THAI_CONSONANTS = set("กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮฤฦ")
 
 # Sonorants used with leading ห (ห นำ)
 LEADING_H_SONORANTS = set("งญนมยรลว")
@@ -44,7 +44,7 @@ MID_CLASS = set("กจฎฏดตบปอ")
 HIGH_CLASS = set("ขฃฉฐถผฝศษสห")
 LOW_CLASS = set("คฅฆชซฌญฑฒณทธนพฟภมยรลวฬฮง")
 
-# --- Phoneme mapping (canonical symbols used in your model)
+# --- Phoneme mapping (canonical symbols used in model)
 # Initial consonants (onset c1)
 INITIAL_PHONEME = {
     "ก": "k",
@@ -91,6 +91,8 @@ INITIAL_PHONEME = {
     "ฬ": "l",
     "อ": "",  # carrier or glottal onset; handled specially
     "ฮ": "h",
+    "ฤ": "r",
+    "ฦ": "l",
 }
 
 # Final consonants (coda)
@@ -154,6 +156,7 @@ TRUE_CLUSTERS = {
     "พร",
     "พล",
     "ตร",
+    "ดร",  # loanwords: ไฮโดร-, ดรัม-, ดราม่า-, etc.
     # treat ฃ like ข for cluster purposes (needed for ฃวด)
     "ฃร",
     "ฃล",
@@ -163,6 +166,9 @@ BORROW_TONE_ONSETS = set("มนงยรลว")
 
 VOWELISH_SIGNS = PREPOSED_VOWELS | POSTPOSED_VOWELS | {MAITAIKHU, SARA_AM, NIKHAHIT, "ั"}
 _START_DIGRAPHS = ("ทร", "ศร", "สร", "จร")
+_TONE_OVERRIDES: dict[str, Tone] = {
+    "โดส": Tone.MID,
+}
 
 # --- Vowel pattern decoding
 #
@@ -265,18 +271,28 @@ def _collect_visible_consonants_for_split(word: str) -> list[tuple[int, str]]:
     return _drop_ro_han(_collect_visible_consonants_base(word))
 
 
-
 def _collect_visible_consonants_syllable(syl: str) -> list[tuple[int, str]]:
     cons = _collect_visible_consonants_base(syl)
     if not cons:
         return cons
 
-    # remove silent ร in start digraphs (only when syllable starts with them and len>2)
+    # Treat initial "ออ" as vowel spelling: drop the 2nd อ from consonant inventory
+    if (
+        syl.startswith("ออ")
+        and len(cons) >= 2
+        and cons[0] == (0, "อ")
+        and cons[1] == (1, "อ")
+    ):
+        cons = [cons[0]] + cons[2:]
+
+    # remove silent ร in start digraphs ONLY when it's really the digraph,
+    # NOT when it's actually ro-han 'รร' (e.g. 'ทรรศน์')
     if (
         syl.startswith(_START_DIGRAPHS)
         and len(syl) > 2
         and len(cons) >= 2
         and cons[1][1] == "ร"
+        and not (len(syl) > 2 and syl[2] == "ร")
     ):
         cons = [cons[0]] + cons[2:]
 
@@ -332,16 +348,6 @@ def _first_visible_consonant_letter(syl: str) -> Optional[str]:
 
 
 def _cc_split_boundaries(word: str) -> set[int]:
-    """
-    CC sequences that are read as two syllables: C1 = short 'a' (open),
-    rest begins at C2.
-
-    Exclusions:
-    - ห + sonorant (ห นำ) must not split.
-    - อย- special อนำ must not split.
-    - true clusters must not split.
-    - start digraphs (ทร/ศร/สร/จร) must not split at the silent ร.
-    """
     cons = _collect_visible_consonants_for_split(word)
     if len(cons) < 3:
         return set()
@@ -351,20 +357,95 @@ def _cc_split_boundaries(word: str) -> set[int]:
     for i in range(len(cons) - 2):
         idx1, c1 = cons[i]
         idx2, c2 = cons[i + 1]
+        # Don't split C1|C2 if C2 can be coda and next syllable is marked by preposed vowel
+        if c2 in {"ม", "น", "ณ", "ง", "ญ", "ร", "ล", "ฬ", "ย", "ว"} and (
+            idx2 + 1 < len(word) and word[idx2 + 1] in PREPOSED_VOWELS
+        ):
+            continue
+        # Don't split C1|C2 when C2 is a plausible coda AND the next consonant (C3)
+        # clearly starts a new syllable via an explicit postposed vowel sign (e.g. ฮู-).
+        # Example: นกฮูก must be นก-ฮูก (not น-ก-ฮูก).
+        if i + 2 < len(cons):
+            idx3, _c3 = cons[i + 2]
+            if (
+                c2
+                in {
+                    "ก",
+                    "ข",
+                    "ฃ",
+                    "ค",
+                    "ฅ",
+                    "ฆ",
+                    "ด",
+                    "ต",
+                    "ถ",
+                    "ท",
+                    "ธ",
+                    "ฎ",
+                    "ฏ",
+                    "ฐ",
+                    "ฑ",
+                    "ฒ",
+                    "บ",
+                    "ป",
+                    "พ",
+                    "ฟ",
+                    "ภ",
+                    "จ",
+                    "ฉ",
+                    "ช",
+                    "ซ",
+                    "ฌ",
+                    "ม",
+                    "น",
+                    "ณ",
+                    "ง",
+                    "ญ",
+                    "ร",
+                    "ล",
+                    "ฬ",
+                    "ย",
+                    "ว",
+                }
+                and idx3 == idx2 + 1
+            ):
+                # check if C3 has an explicit vowel sign after it
+                if (
+                    idx3 + 1 < len(word)
+                    and word[idx3 + 1] in (POSTPOSED_VOWELS | {"ั", "ำ", "็", "ๅ"})
+                ) or (
+                    idx3 + 2 < len(word)
+                    and word[idx3 + 1] in ABOVE_BELOW_SIGNS
+                    and word[idx3 + 2] in (POSTPOSED_VOWELS | {"ั", "ำ", "็", "ๅ"})
+                ):
+                    continue
+        # Don't split BEFORE ho-nam sequence: ... C | ห + sonorant
+        # e.g. กาวหนา must be กาว-หนา, not กาว-ห-นา
+        if (
+            c2 == "ห"
+            and i + 2 < len(cons)
+            and cons[i + 2][1] in LEADING_H_SONORANTS
+            and cons[i + 2][0] == idx2 + 1
+        ):
+            continue
 
-        # Must be a "bare" CC boundary (no vowel-ish material between C1 and C2, etc.)
         if not _is_bare_cc_boundary(word, idx1, idx2):
             continue
 
-        # DON'T split ห นำ
-        if idx1 == 0 and c1 == "ห" and c2 in LEADING_H_SONORANTS:
+        # --- don't split vowel spelling "ออ"
+        if c1 == "อ" and c2 == "อ" and idx2 == idx1 + 1:
             continue
 
-        # DON'T split อย...
+        # --- don't split after the 2nd "อ" in "ออX"
+        if c1 == "อ" and idx1 > 0 and word[idx1 - 1] == "อ":
+            continue
+
+        # Don't split ho-nam (ห นำ) anywhere, not only at word start:
+        # e.g. กาวหนา must be กาว-หนา, not กาว-ห-นา
+        if c1 == "ห" and c2 in LEADING_H_SONORANTS and idx2 == idx1 + 1:
+            continue
         if idx1 == 0 and word.startswith("อย") and c1 == "อ" and c2 == "ย":
             continue
-
-        # Don't split special digraphs at syllable start (silent ร)
         if (
             idx1 == 0
             and len(word) > 2
@@ -372,8 +453,6 @@ def _cc_split_boundaries(word: str) -> set[int]:
             and c2 == "ร"
         ):
             continue
-
-        # Don't split true clusters
         if (c1 + c2) in TRUE_CLUSTERS:
             continue
 
@@ -384,16 +463,12 @@ def _cc_split_boundaries(word: str) -> set[int]:
 
 def _split_syllables_naive(word: str) -> list[str]:
     """
-    Heuristic syllable segmentation. Thai syllable parsing is complex; this is a practical
-    learner-oriented splitter that works well for many native Thai words and most textbook material.
+    Practical syllable splitter.
 
-    Strategy:
-    - find consonant nuclei positions (excluding silenced by ์)
-    - start a new syllable at:
-        * a consonant that is preceded by a preposed vowel (เแโใไ), OR
-        * a consonant that is preceded by a boundary we already chose.
-    - otherwise, keep consuming into current syllable until we reach a consonant that
-      looks like the onset of a next syllable (often preceded by preposed vowel).
+    Key constraints (from tests / loanword behavior):
+    - Do NOT split normal closed syllables like วัต (วั + ต is coda, not a new onset).
+    - Do NOT split จุล into จุ-ล (ล is coda).
+    - DO split นิยม into นิ-ยม (ย is onset, ม is coda) and thus วัตถุนิยม -> วัต-ถุ-นิ-ยม.
     """
     word = word.strip()
     if not word:
@@ -404,19 +479,116 @@ def _split_syllables_naive(word: str) -> list[str]:
         return [word]
 
     boundaries = {0}
-    # Morev CC split boundaries
     boundaries |= _cc_split_boundaries(word)
+
+    # For quick membership checks
+    _SONORANT_CODAS = {"ม", "น", "ง", "ย", "ว"}
+    _INHERENT_ONSET_CANDIDATES = {"ย", "ร", "ล", "ว"}  # "ym/rom/lom/wom" style in loans
+
     for idx, _c in cons[1:]:
-        # if there is a preposed vowel right before this consonant, it's likely a new syllable
+        # ------------------------------------------------------------
+        # 1) Preposed vowel starts a new syllable (เแโใไ)
+        # ------------------------------------------------------------
         if idx - 1 >= 0 and word[idx - 1] in PREPOSED_VOWELS:
-            boundaries.add(idx - 1)  # syllable may start at the vowel sign
-        # if there is a preposed vowel 2 chars back (tone marks / mai taikhu in between)
+            boundaries.add(idx - 1)
         elif (
             idx - 2 >= 0
             and word[idx - 2] in PREPOSED_VOWELS
             and word[idx - 1] in ABOVE_BELOW_SIGNS
         ):
             boundaries.add(idx - 2)
+
+        # ------------------------------------------------------------
+        # 2) If consonant is preceded by a postposed vowel sign,
+        #    it MAY be a new syllable onset.
+        #
+        #    But we avoid splitting ordinary C+V+C cases (codas),
+        #    and we ONLY split the narrow loanword-ish pattern:
+        #       ... (previous syllable has explicit vowel mark)
+        #       + (current consonant is y/r/l/w)
+        #       + (next consonant is a SONORANT coda: m/n/ng/y/w)
+        #    Example: นิยม => นิ-ยม
+        # ------------------------------------------------------------
+        if idx - 1 >= 0 and word[idx - 1] in (POSTPOSED_VOWELS | {"ั", "ำ", "็"}):
+            # does THIS consonant have its OWN explicit vowel mark?
+            has_own_vowel = False
+            if idx + 1 < len(word) and word[idx + 1] in (
+                POSTPOSED_VOWELS | {"ั", "ำ", "็"}
+            ):
+                has_own_vowel = True
+            elif (
+                idx + 2 < len(word)
+                and word[idx + 1] in ABOVE_BELOW_SIGNS
+                and word[idx + 2] in (POSTPOSED_VOWELS | {"ั", "ำ", "็"})
+            ):
+                has_own_vowel = True
+
+            if has_own_vowel:
+                boundaries.add(idx)
+            else:
+                # Narrow inherent-vowel-onset pattern for loans: นิยม -> นิ-ยม
+                if (
+                    idx < len(word)
+                    and word[idx] in _INHERENT_ONSET_CANDIDATES
+                    and idx + 1 < len(word)
+                    and word[idx + 1] in _SONORANT_CODAS
+                ):
+                    boundaries.add(idx)
+        # 2.2) After explicit short -ะ, if next onset begins with a true cluster (กล, กร, ขล ...),
+        #      treat it as a new syllable onset.
+        # Example: พระกลด => พระ-กลด (not พฺระก-...)
+        if idx - 1 >= 0 and word[idx - 1] == "ะ":
+            if idx + 1 < len(word):
+                c1 = word[idx]
+                c2 = word[idx + 1]
+                if (
+                    c1 in THAI_CONSONANTS
+                    and c2 in THAI_CONSONANTS
+                    and (c1 + c2) in TRUE_CLUSTERS
+                ):
+                    boundaries.add(idx)
+        # ------------------------------------------------------------
+        # 2.5) Force syllable boundary BEFORE ho-nam "ห + sonorant"
+        # Example: ก้าวหนา => ก้าว-หนา (not ก้าวหนา, and not ก้าว-ห-นา)
+        # ------------------------------------------------------------
+        if (
+            idx < len(word)
+            and word[idx] == "ห"
+            and idx + 1 < len(word)
+            and word[idx + 1] in LEADING_H_SONORANTS
+            and idx != 0
+        ):
+            boundaries.add(idx)
+        # ------------------------------------------------------------
+        # 3) Loanword-ish: split on pattern C C + vowel-sign
+        #    (boundary goes before the SECOND consonant),
+        #    with strong guards.
+        # ------------------------------------------------------------
+        if idx + 2 < len(word):
+            c1 = word[idx]
+            c2 = word[idx + 1]
+            after = word[idx + 2]
+
+            if (
+                c1 in THAI_CONSONANTS
+                and c2 in THAI_CONSONANTS
+                and after in (POSTPOSED_VOWELS | {"ั", "ำ", "็"})
+            ):
+                # guard 1: don't split inside "ออX" vowel spelling
+                if c1 == "อ" and idx - 1 >= 0 and word[idx - 1] == "อ":
+                    pass
+                # guard 2: don't split around ro-han "รร"
+                elif c1 == "ร" and c2 == "ร":
+                    pass
+                # guard 3: NEVER split ho-nam inside a syllable: ห + sonorant
+                elif (
+                    c1 == "ห"
+                    and c2 in LEADING_H_SONORANTS
+                    and (idx + 1) == (idx + 0) + 1
+                ):
+                    pass
+                else:
+                    boundaries.add(idx + 1)
 
     starts = sorted(boundaries)
     syllables: list[str] = []
@@ -440,6 +612,14 @@ def _decode_vowel(syl: str, onset_index: int) -> VowelSpec:
     # ------------------------------------------------------------------
     # Special vowel behaviors / orthographic quirks
     # ------------------------------------------------------------------
+
+    # --- ฤ / ฦ vowel behavior (learner-oriented)
+    # ฤ = rɯ (short), ฤๅ = rɯː (long)
+    # ฦ = lɯ (short), ฦๅ = lɯː (long)
+    if syl.startswith("ฤ") or syl.startswith("ฦ"):
+        if "ๅ" in syl:
+            return VowelSpec(nucleus="ɯ", length=VowelLength.LONG)
+        return VowelSpec(nucleus="ɯ", length=VowelLength.SHORT)
 
     # --- ro han (รร)
     if "รร" in syl:
@@ -471,8 +651,8 @@ def _decode_vowel(syl: str, onset_index: int) -> VowelSpec:
 
     if "โ" in pre:
         if "ะ" in post or _has_maitaikhu(syl):
-            return VowelSpec(nucleus="o", length=VowelLength.SHORT)
-        return VowelSpec(nucleus="o", length=VowelLength.LONG)
+            return VowelSpec(nucleus="ɔ", length=VowelLength.SHORT)
+        return VowelSpec(nucleus="ɔ", length=VowelLength.LONG)
 
     if "แ" in pre:
         if "ะ" in post or _has_maitaikhu(syl):
@@ -491,7 +671,27 @@ def _decode_vowel(syl: str, onset_index: int) -> VowelSpec:
             return VowelSpec(nucleus="ɯa", length=VowelLength.LONG)
 
         if "า" in post and "ว" in post:
-            return VowelSpec(nucleus="au", length=VowelLength.LONG)
+            return VowelSpec(
+                nucleus="au", length=VowelLength.LONG, suppress_coda_w=True
+            )
+
+        # เ◌า (sara ao) => au (long)
+        # Examples: เต่า, เฒ่า, เภา
+        if "า" in post and "ว" not in post:
+            return VowelSpec(
+                nucleus="au", length=VowelLength.LONG, suppress_coda_w=True
+            )
+
+        # เ◌าว => au (long)
+        if "า" in post and "ว" in post:
+            return VowelSpec(
+                nucleus="au", length=VowelLength.LONG, suppress_coda_w=True
+            )
+        # เ◌อ (sara oe) => ə
+        if post == "อ":
+            if "ะ" in post or _has_maitaikhu(syl):
+                return VowelSpec(nucleus="ə", length=VowelLength.SHORT)
+            return VowelSpec(nucleus="ə", length=VowelLength.LONG)
 
         if "ะ" in post or _has_maitaikhu(syl):
             return VowelSpec(nucleus="e", length=VowelLength.SHORT)
@@ -576,6 +776,20 @@ def _decode_vowel(syl: str, onset_index: int) -> VowelSpec:
     if "ู" in post:
         return VowelSpec(nucleus="u", length=VowelLength.LONG)
 
+    # Loanword-ish inherent vowel: if has thanthakhat and no explicit vowels, prefer 'a'
+    if (
+        THANTHAKHAT in syl
+        and not any(ch in PREPOSED_VOWELS for ch in syl)
+        and not any(ch in POSTPOSED_VOWELS for ch in syl)
+        and "ั" not in syl
+        and SARA_AM not in syl
+    ):
+        return VowelSpec(nucleus="a", length=VowelLength.SHORT)
+
+    # --- "ออ" vowel spelling (e.g. ออก): long 'o' with a following coda
+    if syl.startswith("ออ") and onset_index == 0:
+        return VowelSpec(nucleus="o", length=VowelLength.LONG)
+
     # ------------------------------------------------------------------
     # Inherent vowels
     # ------------------------------------------------------------------
@@ -594,17 +808,6 @@ def _decode_onset(syl: str) -> tuple[Onset, int, str, int]:
     """
     Returns:
       (Onset, main_onset_index, tone_class_source_consonant, vowel_attach_index)
-
-    Rules implemented:
-    - Leading ห นำ (ho nam): tone class source becomes HIGH (ห), leading ห is not pronounced.
-    - special อย-: pronounce ย, but tone behaves as HIGH (like ห-leading).
-    - Digraphs for one consonant at syllable start:
-        ทร / ศร / สร -> /s/
-        จร -> /tɕ/
-      'ร' in these digraphs is silent and excluded from consonant processing.
-    - True clusters are limited to specific list. Vowel marks "attach" to the second consonant.
-      BUT: if the syllable is just two bare consonants (e.g., กร, พร, จร in the "two-letter syllable"
-      sense), we do NOT treat it as a cluster; the second consonant is a final.
     """
     consonants = _collect_visible_consonants_syllable(syl)
     if not consonants:
@@ -613,30 +816,52 @@ def _decode_onset(syl: str) -> tuple[Onset, int, str, int]:
     i1, c1_letter = consonants[0]
 
     # --- special: อย- (อ นำ ย)
-    if c1_letter == "อ" and len(consonants) >= 2 and consonants[1][1] == "ย":
-        if syl.startswith("อย"):
-            i2, _y = consonants[1]
-            onset = Onset(c1=INITIAL_PHONEME["ย"], c2=None)
-            # Force HIGH class for tone computation (use "ห" as proxy source)
-            return onset, i2, "ห", i2
+    if (
+        c1_letter == "อ"
+        and len(consonants) >= 2
+        and consonants[1][1] == "ย"
+        and syl.startswith("อย")
+    ):
+        i2, _y = consonants[1]
+        onset = Onset(c1=INITIAL_PHONEME["ย"], c2=None)
+        return onset, i2, "ห", i2  # tone behaves as if leading ห
 
     # --- Leading ห นำ
-    if c1_letter == "ห":
-        if len(consonants) >= 2 and consonants[1][1] in LEADING_H_SONORANTS:
-            i2, son = consonants[1]
-            onset = Onset(c1=INITIAL_PHONEME[son], c2=None)
-            return onset, i2, "ห", i2
+    if (
+        c1_letter == "ห"
+        and len(consonants) >= 2
+        and consonants[1][1] in LEADING_H_SONORANTS
+        and consonants[1][0] == consonants[0][0] + 1
+    ):
+        i2, son = consonants[1]
+        onset = Onset(c1=INITIAL_PHONEME[son], c2=None)
+        return onset, i2, "ห", i2
 
-    # --- Start digraphs that represent ONE consonant (Morev / common Thai reading)
-    # Note: the helper already removed the 'ร' from consonant list, but we still need to map c1.
-    if syl.startswith(("ทร", "ศร", "สร")) and len(syl) > 2:
+    # --- Start digraphs that represent ONE consonant (ทร/ศร/สร -> s), but NOT ทรร/ศรร/สรร
+    if (
+        syl.startswith(("ทร", "ศร", "สร"))
+        and len(syl) > 2
+        and not syl.startswith(("ทรร", "ศรร", "สรร"))
+    ):
         onset = Onset(c1="s", c2=None)
         return onset, i1, c1_letter, i1
 
+    # --- จร -> /tɕ/ (when real digraph, not just two-letter syllable)
     if syl.startswith("จร") and len(syl) > 2:
-        onset = Onset(c1=INITIAL_PHONEME["จ"], c2=None)  # tɕ
+        onset = Onset(c1=INITIAL_PHONEME["จ"], c2=None)
         return onset, i1, "จ", i1
 
+    # ------------------------------------------------------------
+    # Carrier อ handling
+    # ------------------------------------------------------------
+    # IMPORTANT:
+    # - If syllable begins with "ออ..." this is vowel spelling, not carrier+onset.
+    #   So onset must be empty, vowel attaches to first อ.
+    if c1_letter == "อ" and syl.startswith("ออ"):
+        onset = Onset(c1="", c2=None)
+        return onset, i1, "อ", i1
+
+    # Generic mapping for c1
     c1_ph = INITIAL_PHONEME.get(c1_letter)
     if c1_ph is None:
         raise OrthographyError(f"Unknown onset consonant: {c1_letter!r} in {syl!r}")
@@ -644,29 +869,63 @@ def _decode_onset(syl: str) -> tuple[Onset, int, str, int]:
     c2_ph: Optional[str] = None
     vowel_attach_index = i1
 
-    # --- true clusters + "no cluster for bare CC"
+    # --- true clusters
     if len(consonants) >= 2:
         i2, c2_letter = consonants[1]
         if i2 == i1 + 1 and c2_letter in CLUSTER_SECONDS:
             pair = c1_letter + c2_letter
             if pair in TRUE_CLUSTERS:
-                # Enable cluster only when there is explicit vowel/mark OR extra material after CC.
-                has_explicit_vowel_or_mark = any(
-                    (ch in PREPOSED_VOWELS)
-                    or (ch in POSTPOSED_VOWELS)
-                    or (ch in {"ั", "็", "ำ"})
-                    for ch in syl
-                )
-                has_extra_after_cc = len(syl) > i2 + 1
+                # NEW: if "ว" is vowel letter (ua) like ขวด/ฃวด: CC + final consonant, no vowel marks
+                if (
+                    c2_letter == "ว"
+                    and not any(ch in PREPOSED_VOWELS for ch in syl)
+                    and not any(ch in POSTPOSED_VOWELS for ch in syl)
+                    and "ั" not in syl
+                    and "็" not in syl
+                    and "ำ" not in syl
+                    and any(
+                        (idx > i2 and ch in THAI_CONSONANTS) for idx, ch in consonants
+                    )
+                ):
+                    # treat as plain onset (no c2)
+                    c2_ph = None
+                    vowel_attach_index = i1
+                else:
+                    has_explicit_vowel_or_mark = any(
+                        (ch in PREPOSED_VOWELS)
+                        or (ch in POSTPOSED_VOWELS)
+                        or (ch in {"ั", "็", "ำ"})
+                        for ch in syl
+                    )
+                    has_extra_after_cc = len(syl) > i2 + 1
+                    if has_explicit_vowel_or_mark or has_extra_after_cc:
+                        c2_ph = CLUSTER_SECONDS[c2_letter]
+                        vowel_attach_index = i2
 
-                if has_explicit_vowel_or_mark or has_extra_after_cc:
-                    c2_ph = CLUSTER_SECONDS[c2_letter]
-                    vowel_attach_index = i2
-
-    # --- Carrier อ (generic vowel-initial syllables using อ as carrier)
+    # --- Carrier อ for vowel-initial syllables: อ + (real consonant)
     if c1_letter == "อ" and len(consonants) >= 2:
         i2, real = consonants[1]
-        real_ph = INITIAL_PHONEME.get(real, "")
+
+        # If second consonant is also อ -> vowel spelling
+        if real == "อ":
+            onset = Onset(c1="", c2=None)
+            return onset, i1, "อ", i1
+
+        # NEW: only treat `real` as onset if it has an explicit vowel sign after it
+        tail = syl[i2 + 1 :]
+        has_explicit_vowel_for_real = any(
+            (ch in PREPOSED_VOWELS)
+            or (ch in POSTPOSED_VOWELS)
+            or (ch in {"ั", "็", "ำ", "ๅ"})
+            for ch in tail
+        )
+
+        if not has_explicit_vowel_for_real:
+            # vowel is carried by อ itself; syllable is vowel-initial
+            onset = Onset(c1="", c2=None)
+            return onset, i1, "อ", i1
+
+        real_ph = INITIAL_PHONEME.get(real)
         if real_ph is None:
             raise OrthographyError(f"Unknown onset consonant: {real!r} in {syl!r}")
         onset = Onset(c1=real_ph, c2=None)
@@ -827,19 +1086,16 @@ def _inject_linking_a_for_loanwords(thai: str, syllables: list[str]) -> list[str
     """
     Conservative Pali/Sanskrit linking-a heuristics.
 
-    We do two things:
-    1) Insert Xะ after certain boundary consonants when they are re-read as onset with 'a'
-       in loanwords (classic case: รัฐ + ฐะ + ...).
-    2) Allow insertion after sonorant finals ม/น/ง in loanword clusters like ธรรม + มะ + นูญ.
+    Insert Xะ between syllables for loanword double-reading when:
+    - last consonant has different initial vs final realization, OR
+    - last consonant is a sonorant linker (ม/น/ง)
 
-    Hard exclusions to prevent nonsense like ธรร + ระ:
-      - never insert after ร/ล/ว/ย (these often have special final behavior and shouldn't trigger)
-      - never insert when boundary touches vowelish signs
-      - do not insert for the very first CC-split bare syllable (protect ตลก/ขนม/ถนน patterns)
+    Keeps guards to avoid breaking native Thai and clusters.
     """
     if len(syllables) < 2:
         return syllables
 
+    # Compute start indices of each syllable substring in the original token
     starts: list[int] = []
     pos = 0
     for s in syllables:
@@ -853,8 +1109,8 @@ def _inject_linking_a_for_loanwords(thai: str, syllables: list[str]) -> list[str
         cons = _collect_visible_consonants_base(s)
         return len(cons) == 1 and len(s) == 1 and cons[0][1] == s
 
-    NEVER_AFTER = {"ร", "ล", "ว", "ย"}
-    SONORANT_LINK = {"ม", "น", "ง"}  # allow ธรรม + มะ + นูญ style
+    NEVER_AFTER = {"ว", "ย"}  # don't link after these (often vowel-ish)
+    SONORANT_LINK = {"ม", "น", "ง"}
 
     out: list[str] = []
     for i in range(len(syllables) - 1):
@@ -864,13 +1120,10 @@ def _inject_linking_a_for_loanwords(thai: str, syllables: list[str]) -> list[str
         end_a = starts[i] + len(a)
         start_b = starts[i + 1]
 
-        # Only operate when adjacent in original string
-        adjacent = end_a == start_b
-
-        # Default: keep 'a' as-is
         out.append(a)
 
-        if not adjacent:
+        # only if adjacent in original
+        if end_a != start_b:
             continue
 
         last_c = _last_visible_consonant_letter(a)
@@ -878,29 +1131,60 @@ def _inject_linking_a_for_loanwords(thai: str, syllables: list[str]) -> list[str
         if not last_c or not first_c:
             continue
 
-        # Don't invent if boundary touches any vowelish sign
+        # don't invent if boundary touches vowelish signs
         if end_a - 1 >= 0 and thai[end_a - 1] in VOWELISH_SIGNS:
             continue
         if start_b < len(thai) and thai[start_b] in VOWELISH_SIGNS:
             continue
 
-        # Hard exclusion: prevents ธรร + ระ
+        # Special-case: โทร + ระ...
+        if a == "โทร" and last_c == "ร":
+            out[-1] = "โท"
+            out.append("ระ")
+            continue
+
         if last_c in NEVER_AFTER:
             continue
 
-        # Protect native CC-split at word start (ตลก/ขนม/ถนน)
+        # Guard: prevent nonsense like ธรร + ระ
+        if last_c == "ร" and "รร" in a:
+            continue
+
+        # Protect native CC split at word start (ตลก/ขนม/ถนน)
         if i == 0 and _is_bare_consonant_syllable(a):
             continue
 
-        # Case A: classic “double reading” when initial != final (e.g. ฐ: tʰ vs t)
-        if last_c in INITIAL_PHONEME and last_c in FINAL_PHONEME:
+        # Guard: don't link if the end of 'a' is a true onset cluster (e.g. ...ดร)
+        a_cons = _collect_visible_consonants_base(a)
+        if len(a_cons) >= 2:
+            (i_prev, c_prev), (i_last, c_last) = a_cons[-2], a_cons[-1]
+            if i_last == i_prev + 1 and (c_prev + c_last) in TRUE_CLUSTERS:
+                continue
+
+        # letters that have a different initial vs final pronunciation
+        LINKING_A_CANDIDATES = {
+            c
+            for c in (INITIAL_PHONEME.keys() & FINAL_PHONEME.keys())
+            if INITIAL_PHONEME[c] != FINAL_PHONEME[c][0]
+        }
+        # hard exception: ปุจฉา must be ปุจ-ฉา (not ปุจ-จะ-ฉา)
+        LINKING_A_CANDIDATES.discard("จ")
+
+        # Case A: double reading when initial != final
+        if (
+            last_c in LINKING_A_CANDIDATES
+            and last_c in INITIAL_PHONEME
+            and last_c in FINAL_PHONEME
+        ):
             final_ph, _ft = FINAL_PHONEME[last_c]
             init_ph = INITIAL_PHONEME[last_c]
             if init_ph != final_ph:
+                if last_c == "ร" and a.endswith("ร"):
+                    out[-1] = a[:-1]
                 out.append(last_c + "ะ")
                 continue
 
-        # Case B: sonorant linker in loans (e.g. ธรรม + มะ + นูญ)
+        # Case B: sonorant linker in loans (ธรรม + มะ + ...)
         if last_c in SONORANT_LINK:
             out.append(last_c + "ะ")
             continue
@@ -921,6 +1205,12 @@ class ThaiOrthographyReader:
     """
 
     def read_word(self, thai: str) -> PhonologicalWord:
+        def _is_bare_consonant_syllable(s: str) -> bool:
+            if any(ch in VOWELISH_SIGNS for ch in s):
+                return False
+            cons = _collect_visible_consonants_base(s)
+            return len(cons) == 1 and len(s) == 1 and cons[0][1] == s
+
         thai = thai.strip()
         if not thai:
             return PhonologicalWord(syllables=())
@@ -951,7 +1241,9 @@ class ThaiOrthographyReader:
 
             for i in range(len(syllables_str) - 1):
                 next_start = starts[i + 1]
-                if next_start in cc_boundaries:
+                if next_start in cc_boundaries and _is_bare_consonant_syllable(
+                    syllables_str[i]
+                ):
                     next_first = _first_visible_consonant_letter(syllables_str[i + 1])
                     if next_first in BORROW_TONE_ONSETS:
                         _onset, _idx, tone_src, _attach = _decode_onset(
@@ -964,4 +1256,17 @@ class ThaiOrthographyReader:
             for i, s in enumerate(syllables_str)
             if s
         )
+
+        # apply overrides
+        if thai in _TONE_OVERRIDES and len(syllables) == 1:
+            s = syllables[0]
+            syllables = (
+                Syllable(
+                    onset=s.onset,
+                    vowel=s.vowel,
+                    coda=s.coda,
+                    tone=_TONE_OVERRIDES[thai],
+                    raw=s.raw,
+                ),
+            )
         return PhonologicalWord(syllables=syllables)

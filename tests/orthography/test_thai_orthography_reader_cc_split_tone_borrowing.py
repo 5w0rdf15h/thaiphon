@@ -1,11 +1,10 @@
 import pytest
 
 from thaiphon.phonology.model import Tone, VowelLength
-from thaiphon.reader.thai_orthography_reader import ThaiOrthographyReader
 
 
 @pytest.mark.parametrize(
-    "thai, exp",
+    "thai, expected",
     [
         # CC sequences split into two syllables; the second syllable can borrow
         # tone class source from the first syllable when its onset is a sonorant
@@ -78,26 +77,30 @@ from thaiphon.reader.thai_orthography_reader import ThaiOrthographyReader
         ),
     ],
 )
-def test_reader_cc_split_and_tone_borrowing(thai: str, exp: list[dict]):
-    r = ThaiOrthographyReader()
-    w = r.read_word(thai)
+def test_reader_cc_split_and_tone_borrowing(
+    thai: str, expected: list[dict], thai_reader
+):
+    w = thai_reader.read_word(thai)
 
     assert (
         len(w.syllables) == 2
     ), f"{thai}: expected 2 syllables, got {len(w.syllables)}"
 
-    for i, e in enumerate(exp):
+    for i, exp in enumerate(expected):
         s = w.syllables[i]
+
         assert (
-            s.onset.c1 == e["onset"]
-        ), f"{thai} syllable {i}: onset {s.onset.c1} != {e['onset']}"
+            s.onset.c1 == exp["onset"]
+        ), f"{thai} syllable {i}: onset {s.onset.c1!r} != {exp['onset']!r}"
         assert (
-            s.vowel.nucleus == e["nucleus"]
-        ), f"{thai} syllable {i}: nucleus {s.vowel.nucleus} != {e['nucleus']}"
+            s.vowel.nucleus == exp["nucleus"]
+        ), f"{thai} syllable {i}: nucleus {s.vowel.nucleus!r} != {exp['nucleus']!r}"
         assert (
-            s.vowel.length == e["length"]
-        ), f"{thai} syllable {i}: length {s.vowel.length} != {e['length']}"
+            s.vowel.length == exp["length"]
+        ), f"{thai} syllable {i}: length {s.vowel.length!r} != {exp['length']!r}"
         assert (
-            s.coda.phoneme == e["coda"]
-        ), f"{thai} syllable {i}: coda {s.coda.phoneme} != {e['coda']}"
-        assert s.tone == e["tone"], f"{thai} syllable {i}: tone {s.tone} != {e['tone']}"
+            s.coda.phoneme == exp["coda"]
+        ), f"{thai} syllable {i}: coda {s.coda.phoneme!r} != {exp['coda']!r}"
+        assert (
+            s.tone == exp["tone"]
+        ), f"{thai} syllable {i}: tone {s.tone!r} != {exp['tone']!r}"

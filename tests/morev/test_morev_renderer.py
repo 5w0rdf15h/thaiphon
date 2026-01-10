@@ -1,5 +1,3 @@
-import unicodedata
-
 import pytest
 
 from thaiphon.phonology.model import (
@@ -12,12 +10,6 @@ from thaiphon.phonology.model import (
     Vowel,
     VowelLength,
 )
-from thaiphon.renderers.morev import MorevRenderer
-
-
-def nfd(s: str) -> str:
-    """Normalize to NFD to compare combining marks reliably."""
-    return unicodedata.normalize("NFD", s)
 
 
 def syl(
@@ -120,7 +112,7 @@ def w(*syllables: Syllable) -> PhonologicalWord:
         (w(syl(c1="s", nucleus="ai", length=VowelLength.SHORT, tone=Tone.MID)), "сай"),
         (w(syl(c1="s", nucleus="ai", length=VowelLength.LONG, tone=Tone.MID)), "сай"),
         # ---------------------------------------------------------------------
-        # From your table (tone + length are authoritative; aspiration handled by renderer)
+        # (tone + length are authoritative; aspiration handled by renderer)
         # ไก่  -> кайˆ
         # ไข่  -> кˣайˆ
         # ---------------------------------------------------------------------
@@ -429,7 +421,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             w(syl(c1="s", nucleus="i", length=VowelLength.LONG, tone=Tone.RISING)),
             "сӣ´",
         ),  # ศรี sī´
-        # สรวม sūam´  (ua long + final m)
         (
             w(
                 syl(
@@ -459,7 +450,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
         # ---------------------------------------------------------------------
         # Morev dictionary examples: "true clusters" (C + r/l/w) from the table
         # ---------------------------------------------------------------------
-        # กราย -> кра̄й
         (
             w(
                 syl(
@@ -474,7 +464,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кра̄й",
         ),
-        # คราม -> кхра̄м
         (
             w(
                 syl(
@@ -489,7 +478,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кˣра̄м",
         ),
-        # ขรึม -> кхрым
         (
             w(
                 syl(
@@ -504,20 +492,10 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кˣрым",
         ),
-        # ปลา -> пла̄
         (
-            w(
-                syl(
-                    c1="p",
-                    c2="l",
-                    nucleus="a",
-                    length=VowelLength.LONG,
-                    tone=Tone.MID,
-                )
-            ),
+            w(syl(c1="p", c2="l", nucleus="a", length=VowelLength.LONG, tone=Tone.MID)),
             "пла̄",
         ),
-        # กลาย -> кла̄й
         (
             w(
                 syl(
@@ -532,7 +510,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кла̄й",
         ),
-        # ขลุม -> кхлум
         (
             w(
                 syl(
@@ -547,7 +524,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кˣлум",
         ),
-        # คลาย -> кхла̄й
         (
             w(
                 syl(
@@ -562,7 +538,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кˣла̄й",
         ),
-        # กวาง -> куа̄нг
         (
             w(
                 syl(
@@ -577,7 +552,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "куа̄нг",
         ),
-        # ขวาง -> кхуа̄нг
         (
             w(
                 syl(
@@ -592,7 +566,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кˣуа̄нг",
         ),
-        # ควาย -> кхуа̄й
         (
             w(
                 syl(
@@ -607,7 +580,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кˣуа̄й",
         ),
-        # ปราย -> пра̄й
         (
             w(
                 syl(
@@ -622,7 +594,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "пра̄й",
         ),
-        # พราง -> пхра̄нг
         (
             w(
                 syl(
@@ -637,28 +608,14 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "пˣра̄нг",
         ),
-        # ตรา -> тра̄
         (
-            w(
-                syl(
-                    c1="t",
-                    c2="r",
-                    nucleus="a",
-                    length=VowelLength.LONG,
-                    tone=Tone.MID,
-                )
-            ),
+            w(syl(c1="t", c2="r", nucleus="a", length=VowelLength.LONG, tone=Tone.MID)),
             "тра̄",
         ),
-        # ภราดร -> пхра̄-до̄н
         (
             w(
                 syl(
-                    c1="pʰ",
-                    c2="r",
-                    nucleus="a",
-                    length=VowelLength.LONG,
-                    tone=Tone.MID,
+                    c1="pʰ", c2="r", nucleus="a", length=VowelLength.LONG, tone=Tone.MID
                 ),
                 syl(
                     c1="d",
@@ -671,7 +628,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "пˣра̄-до̄н",
         ),
-        # ผลาญ -> пхла̄н
         (
             w(
                 syl(
@@ -686,7 +642,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "пˣла̄н",
         ),
-        # พลวง -> пхлӯанг
         (
             w(
                 syl(
@@ -704,7 +659,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
         # ---------------------------------------------------------------------
         # Morev: CC sequences split into two syllables (tone borrowing rule)
         # ---------------------------------------------------------------------
-        # ตลก -> taˆ-lokˆ
         (
             w(
                 syl(c1="t", nucleus="a", length=VowelLength.SHORT, tone=Tone.LOW),
@@ -719,7 +673,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "таˆ-локˆ",
         ),
-        # ขนม -> khaˆ-nom´
         (
             w(
                 syl(c1="kʰ", nucleus="a", length=VowelLength.SHORT, tone=Tone.LOW),
@@ -734,7 +687,6 @@ def w(*syllables: Syllable) -> PhonologicalWord:
             ),
             "кˣаˆ-ном´",
         ),
-        # ถนน -> thaˆ-non´
         (
             w(
                 syl(c1="tʰ", nucleus="a", length=VowelLength.SHORT, tone=Tone.LOW),
@@ -751,6 +703,13 @@ def w(*syllables: Syllable) -> PhonologicalWord:
         ),
     ],
 )
-def test_morev_renderer_matrix(word: PhonologicalWord, expected: str):
-    out = MorevRenderer().render(word)
+def test_morev_renderer_matrix(
+    word: PhonologicalWord, expected: str, morev_renderer, nfd
+):
+    out = morev_renderer.render(word)
     assert nfd(out) == nfd(expected)
+
+
+def test_morev_renderer_real_word_kaaw_naaa_regression(morev_transcribe, nfd):
+    out = morev_transcribe("ก้าวหนา")
+    assert nfd(out) == nfd("ка̄у`-на̄´")

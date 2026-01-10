@@ -39,7 +39,7 @@ _ONSET_BASE = {
     "h": "х",
     "r": "р",
     "l": "л",
-    "w": "у",  # glide
+    "w": "в",  # onset w -> в
     "j": "й",  # glide
     "tɕ": "ть",  # จ-like
     "tɕʰ": "ч",  # ช/ฉ-like; in Morev usually no "чˣ"
@@ -47,7 +47,8 @@ _ONSET_BASE = {
 }
 
 # Second consonant in clusters (r/l/w etc.) reuse same base mapping
-_C2_BASE = _ONSET_BASE
+_C2_BASE = dict(_ONSET_BASE)
+_C2_BASE["w"] = "у"  # NEW: cluster glide w -> у
 
 # Coda mapping (final consonants are limited in Thai)
 _CODA = {
@@ -101,7 +102,9 @@ def _split_aspirated(phoneme: str) -> tuple[str, bool]:
     return phoneme, False
 
 
-def _map_consonant_base(table: dict[str, str], ph: str, where: str) -> str:
+def _map_consonant_base(table, ph: str, where: str) -> str:
+    if ph == "":
+        return ""  # <- allow zero onset (carrier อ)
     try:
         return table[ph]
     except KeyError as e:
@@ -132,21 +135,25 @@ def _render_onset_phoneme(
 
 
 def _render_syllable(
-    s: Syllable, aspiration_style: Literal["text", "html", "plain"]
+    s: Syllable,
+    aspiration_style: Literal["text", "html", "plain"],
+    mark_tones: bool,
 ) -> str:
-    # onset
-    c1 = _render_onset_phoneme(s.onset.c1, "onset.c1", aspiration_style, _ONSET_BASE)
+    # onset (special-case w: can be rendered as 'у' before back-ish vowels in this system)
+    if s.onset.c1 == "w":
+        w_as_u = {"a", "ɔ", "o", "u", "ua", "au", "ai"}  # tweakable set
+        c1 = "у" if s.vowel.nucleus in w_as_u else "в"
+    else:
+        c1 = _render_onset_phoneme(
+            s.onset.c1, "onset.c1", aspiration_style, _ONSET_BASE
+        )
+
     c2 = ""
     if s.onset.c2:
         c2 = _render_onset_phoneme(s.onset.c2, "onset.c2", aspiration_style, _C2_BASE)
     onset = c1 + c2
 
-    # vowel
-    nuc, macron_pos = _VOWEL.get(s.vowel.nucleus, (None, None))
-    if nuc is None:
-        raise UnknownPhonemeError(f"Unknown vowel nucleus: {s.vowel.nucleus!r}")
-
-    # vowel
+    # vowel (REMOVE duplicate lookup)
     nuc, macron_pos = _VOWEL.get(s.vowel.nucleus, (None, None))
     if nuc is None:
         raise UnknownPhonemeError(f"Unknown vowel nucleus: {s.vowel.nucleus!r}")
@@ -170,8 +177,7 @@ def _render_syllable(
     if coda is None:
         raise UnknownPhonemeError(f"Unknown coda phoneme: {s.coda.phoneme!r}")
 
-    # tone
-    tone = _TONE_SUFFIX[s.tone]
+    tone = _TONE_SUFFIX[s.tone] if mark_tones else ""
 
     return f"{onset}{nuc}{coda}{tone}"
 
@@ -180,8 +186,10 @@ def _render_syllable(
 class MorevRenderer(Renderer):
     system_id: str = "morev"
     aspiration_style: Literal["text", "html", "plain"] = "text"
+    mark_tones: bool = True
 
     def render(self, word: PhonologicalWord) -> str:
         return "-".join(
-            _render_syllable(s, self.aspiration_style) for s in word.syllables
+            _render_syllable(s, self.aspiration_style, self.mark_tones)
+            for s in word.syllables
         )
