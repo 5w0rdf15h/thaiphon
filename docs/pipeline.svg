@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 560" role="img"
+     aria-labelledby="pipeline-readme-title pipeline-readme-desc"
+     font-family="'Nunito Sans', 'Helvetica Neue', sans-serif">
+  <title id="pipeline-readme-title">The thaiphon pipeline</title>
+  <desc id="pipeline-readme-desc">Thai text flows through six stages — normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer — and emerges as a surface string in IPA, TLC, or Morev.</desc>
+
+  <defs>
+    <!-- Warm paper background -->
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#faf7f0"/>
+    </linearGradient>
+
+    <!-- Indigo card -->
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#322a70"/>
+      <stop offset="1" stop-color="#221c5a"/>
+    </linearGradient>
+
+    <!-- Gold hairline for ornaments -->
+    <linearGradient id="goldRule" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0"   stop-color="#c49a3c" stop-opacity="0"/>
+      <stop offset=".5"  stop-color="#c49a3c" stop-opacity=".9"/>
+      <stop offset="1"   stop-color="#c49a3c" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Gold arrow marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#c49a3c"/>
+    </marker>
+
+    <!-- Soft drop shadow for cards -->
+    <filter id="softShadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="0" dy="2" result="off"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".22"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Subtle paper grain -->
+    <pattern id="grain" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+      <circle cx=".5" cy=".5" r=".35" fill="#2a2640" fill-opacity=".025"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="560" fill="url(#paper)"/>
+  <rect width="1400" height="560" fill="url(#grain)"/>
+
+  <!-- Eyebrow title -->
+  <g transform="translate(700, 42)" text-anchor="middle">
+    <text font-size="10" letter-spacing="3" fill="#8a6a1e" font-weight="700">T H E   P I P E L I N E</text>
+    <line x1="-28" y1="12" x2="28" y2="12" stroke="#c49a3c" stroke-width="1.5"/>
+  </g>
+
+  <!-- ======================= INPUT ======================= -->
+
+  <g transform="translate(60, 200)">
+    <rect width="160" height="160" rx="10" fill="#2d2768" filter="url(#softShadow)"/>
+    <text x="80" y="30" text-anchor="middle" font-size="9" letter-spacing="2" fill="#d4af5a" font-weight="700">INPUT · THAI TEXT</text>
+    <line x1="58" y1="42" x2="102" y2="42" stroke="#c49a3c" stroke-width="1" opacity=".5"/>
+    <text x="80" y="92" text-anchor="middle" font-size="32" fill="#fffdf8" font-family="'Sarabun','Prompt',sans-serif" font-weight="600">ภาษาไทย</text>
+    <text x="80" y="130" text-anchor="middle" font-size="10" fill="#c9c5e0" font-style="italic">“the Thai language”</text>
+  </g>
+
+  <!-- Arrow INPUT → 01 -->
+  <line x1="224" y1="280" x2="254" y2="280" stroke="#c49a3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ======================= STAGE 01 ======================= -->
+  <g transform="translate(260, 200)">
+    <rect width="140" height="160" rx="10" fill="url(#card)" filter="url(#softShadow)"/>
+    <text x="70" y="50" text-anchor="middle" font-family="'Prompt','Playfair Display',serif" font-size="36" font-weight="300" fill="#c49a3c" opacity=".65">01</text>
+    <text x="70" y="72" text-anchor="middle" font-size="8" letter-spacing="1.8" fill="#d4af5a" font-weight="700">NORMALISE</text>
+    <line x1="52" y1="82" x2="88" y2="82" stroke="#c49a3c" stroke-width=".75" opacity=".5"/>
+    <text x="70" y="106" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">Unicode cleanup</text>
+    <text x="70" y="122" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">+ expansion</text>
+    <text x="70" y="146" text-anchor="middle" font-size="9" fill="#c9c5e0">NFC · reorder · digits</text>
+  </g>
+  <line x1="400" y1="280" x2="416" y2="280" stroke="#c49a3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ======================= STAGE 02 ======================= -->
+  <g transform="translate(420, 200)">
+    <rect width="140" height="160" rx="10" fill="url(#card)" filter="url(#softShadow)"/>
+    <text x="70" y="50" text-anchor="middle" font-family="'Prompt','Playfair Display',serif" font-size="36" font-weight="300" fill="#c49a3c" opacity=".65">02</text>
+    <text x="70" y="72" text-anchor="middle" font-size="8" letter-spacing="1.8" fill="#d4af5a" font-weight="700">LEXICON</text>
+    <line x1="52" y1="82" x2="88" y2="82" stroke="#c49a3c" stroke-width=".75" opacity=".5"/>
+    <text x="70" y="106" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">Exact-match</text>
+    <text x="70" y="122" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">curated lookup</text>
+    <text x="70" y="146" text-anchor="middle" font-size="9" fill="#c9c5e0">irregulars · VOLUBILIS</text>
+  </g>
+  <line x1="560" y1="280" x2="576" y2="280" stroke="#c49a3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ======================= STAGE 03 ======================= -->
+  <g transform="translate(580, 200)">
+    <rect width="140" height="160" rx="10" fill="url(#card)" filter="url(#softShadow)"/>
+    <text x="70" y="50" text-anchor="middle" font-family="'Prompt','Playfair Display',serif" font-size="36" font-weight="300" fill="#c49a3c" opacity=".65">03</text>
+    <text x="70" y="72" text-anchor="middle" font-size="8" letter-spacing="1.8" fill="#d4af5a" font-weight="700">SYLLABIFY</text>
+    <line x1="52" y1="82" x2="88" y2="82" stroke="#c49a3c" stroke-width=".75" opacity=".5"/>
+    <text x="70" y="106" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">Segment into</text>
+    <text x="70" y="122" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">candidates</text>
+    <text x="70" y="146" text-anchor="middle" font-size="9" fill="#c9c5e0">TCC · generate · rank</text>
+  </g>
+  <line x1="720" y1="280" x2="736" y2="280" stroke="#c49a3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ======================= STAGE 04 ======================= -->
+  <g transform="translate(740, 200)">
+    <rect width="140" height="160" rx="10" fill="url(#card)" filter="url(#softShadow)"/>
+    <text x="70" y="50" text-anchor="middle" font-family="'Prompt','Playfair Display',serif" font-size="36" font-weight="300" fill="#c49a3c" opacity=".65">04</text>
+    <text x="70" y="72" text-anchor="middle" font-size="8" letter-spacing="1.8" fill="#d4af5a" font-weight="700">DERIVE</text>
+    <line x1="52" y1="82" x2="88" y2="82" stroke="#c49a3c" stroke-width=".75" opacity=".5"/>
+    <text x="70" y="106" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">Phonemes per</text>
+    <text x="70" y="122" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">syllable</text>
+    <text x="70" y="146" text-anchor="middle" font-size="9" fill="#c9c5e0">onset · vowel · coda · tone</text>
+  </g>
+  <line x1="880" y1="280" x2="896" y2="280" stroke="#c49a3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ======================= STAGE 05 ======================= -->
+  <g transform="translate(900, 200)">
+    <rect width="140" height="160" rx="10" fill="url(#card)" filter="url(#softShadow)"/>
+    <text x="70" y="50" text-anchor="middle" font-family="'Prompt','Playfair Display',serif" font-size="36" font-weight="300" fill="#c49a3c" opacity=".65">05</text>
+    <text x="70" y="72" text-anchor="middle" font-size="8" letter-spacing="1.8" fill="#d4af5a" font-weight="700">PHONWORD</text>
+    <line x1="52" y1="82" x2="88" y2="82" stroke="#c49a3c" stroke-width=".75" opacity=".5"/>
+    <text x="70" y="106" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">Frozen data</text>
+    <text x="70" y="122" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">contract</text>
+    <text x="70" y="146" text-anchor="middle" font-size="9" fill="#c9c5e0">Syllable tuple · hashable</text>
+  </g>
+  <line x1="1040" y1="280" x2="1056" y2="280" stroke="#c49a3c" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ======================= STAGE 06 (gold — culmination) ======================= -->
+  <g transform="translate(1060, 200)">
+    <rect width="140" height="160" rx="10" fill="#c49a3c" filter="url(#softShadow)"/>
+    <text x="70" y="50" text-anchor="middle" font-family="'Prompt','Playfair Display',serif" font-size="36" font-weight="400" fill="#2d2768" opacity=".85">06</text>
+    <text x="70" y="72" text-anchor="middle" font-size="8" letter-spacing="1.8" fill="#2d2768" font-weight="700">RENDER</text>
+    <line x1="52" y1="82" x2="88" y2="82" stroke="#2d2768" stroke-width=".75" opacity=".4"/>
+    <text x="70" y="106" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">Apply</text>
+    <text x="70" y="122" text-anchor="middle" font-size="12" fill="#fffdf8" font-weight="600">SchemeMapping</text>
+    <text x="70" y="146" text-anchor="middle" font-size="9" fill="#fffdf8" opacity=".9">→ surface string</text>
+  </g>
+
+  <!-- Fan-out from renderer to 3 output chips -->
+  <path d="M 1200 238 C 1220 238, 1220 212, 1240 212" fill="none" stroke="#c49a3c" stroke-width="1.25" marker-end="url(#arrow)"/>
+  <path d="M 1200 280 L 1240 280" stroke="#c49a3c" stroke-width="1.25" marker-end="url(#arrow)"/>
+  <path d="M 1200 322 C 1220 322, 1220 348, 1240 348" fill="none" stroke="#c49a3c" stroke-width="1.25" marker-end="url(#arrow)"/>
+
+  <!-- ======================= OUTPUT CHIPS ======================= -->
+
+  <!-- Small eyebrow above the output stack -->
+  <g transform="translate(1314, 166)" text-anchor="middle">
+    <text font-size="9" letter-spacing="2.5" fill="#8a6a1e" font-weight="700">S U R F A C E</text>
+  </g>
+
+  <!-- IPA -->
+  <g transform="translate(1244, 182)">
+    <rect width="140" height="60" rx="8" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="70" y="20" text-anchor="middle" font-size="8" letter-spacing="2" fill="#8a6a1e" font-weight="700">IPA</text>
+    <line x1="56" y1="26" x2="84" y2="26" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="70" y="48" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="12" fill="#2d2768">pʰaː.sǎː.tʰaj</text>
+  </g>
+
+  <!-- TLC -->
+  <g transform="translate(1244, 250)">
+    <rect width="140" height="60" rx="8" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="70" y="20" text-anchor="middle" font-size="8" letter-spacing="2" fill="#8a6a1e" font-weight="700">TLC</text>
+    <line x1="56" y1="26" x2="84" y2="26" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="70" y="48" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="11" fill="#2d2768">paa saa{R} tai{M}</text>
+  </g>
+
+  <!-- Morev -->
+  <g transform="translate(1244, 318)">
+    <rect width="140" height="60" rx="8" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="70" y="20" text-anchor="middle" font-size="8" letter-spacing="2" fill="#8a6a1e" font-weight="700">MOREV</text>
+    <line x1="56" y1="26" x2="84" y2="26" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="70" y="48" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="12" fill="#2d2768">пʰа̄-са̄̌-тʰай</text>
+  </g>
+
+  <!-- ======================= FOOTER ORNAMENT ======================= -->
+
+  <g transform="translate(700, 490)" text-anchor="middle">
+    <line x1="-80" y1="0" x2="-14" y2="0" stroke="url(#goldRule)" stroke-width="1"/>
+    <circle cx="0" cy="0" r="2" fill="#c49a3c"/>
+    <line x1="14" y1="0" x2="80" y2="0" stroke="url(#goldRule)" stroke-width="1"/>
+  </g>
+
+  <text x="700" y="518" text-anchor="middle" font-size="11" fill="#9994ab" font-style="italic">One phonological word, many surface notations.</text>
+</svg>

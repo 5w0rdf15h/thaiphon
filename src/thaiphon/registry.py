@@ -1,36 +1,59 @@
+"""Generic instance-based registry for renderers and similar plugins."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable, Dict, Type
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, runtime_checkable
 
-from thaiphon.renderers.base import Renderer
+from thaiphon.errors import UnsupportedSchemeError
 
-
-@dataclass(frozen=True)
-class RendererInfo:
-    system_id: str
-    factory: Callable[[], Renderer]
-
-
-_RENDERERS: Dict[str, RendererInfo] = {}
+if TYPE_CHECKING:
+    from thaiphon.model.syllable import Syllable
+    from thaiphon.model.word import PhonologicalWord
+    from thaiphon.renderers.base import RenderContext
 
 
-def register_renderer(system_id: str, factory: Callable[[], Renderer]) -> None:
-    key = system_id.strip().lower()
-    if key in _RENDERERS:
-        raise ValueError(f"Renderer already registered: {system_id}")
-    _RENDERERS[key] = RendererInfo(system_id=key, factory=factory)
+@runtime_checkable
+class Renderer(Protocol):
+    """Minimum surface every registered renderer exposes."""
+
+    scheme_id: str
+
+    def render_word(
+        self, word: PhonologicalWord, ctx: RenderContext
+    ) -> str: ...
+
+    def render_syllable(self, syl: Syllable) -> str: ...
 
 
-def get_renderer(system_id: str) -> Renderer:
-    key = system_id.strip().lower()
-    try:
-        return _RENDERERS[key].factory()
-    except KeyError as e:
-        raise KeyError(
-            f"Unknown renderer: {system_id}. Known: {sorted(_RENDERERS)}"
-        ) from e
+T = TypeVar("T")
 
 
-def list_renderers() -> list[str]:
-    return sorted(_RENDERERS.keys())
+class Registry(Generic[T]):
+    """Instance-based factory registry keyed by string id."""
+
+    __slots__ = ("_factories",)
+
+    def __init__(self) -> None:
+        self._factories: dict[str, Callable[[], T]] = {}
+
+    def register(self, key: str, factory: Callable[[], T]) -> None:
+        if key in self._factories:
+            raise ValueError(f"already registered: {key}")
+        self._factories[key] = factory
+
+    def get(self, key: str) -> T:
+        try:
+            factory = self._factories[key]
+        except KeyError as exc:
+            raise UnsupportedSchemeError(key) from exc
+        return factory()
+
+    def keys(self) -> tuple[str, ...]:
+        return tuple(sorted(self._factories))
+
+    def __contains__(self, key: object) -> bool:
+        return isinstance(key, str) and key in self._factories
+
+
+RENDERERS: Registry[Renderer] = Registry()

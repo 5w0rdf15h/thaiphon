@@ -1,47 +1,41 @@
+"""Shared pytest fixtures for the thaiphon test suite."""
+
+from __future__ import annotations
+
 import unicodedata
 
 import pytest
 
-from thaiphon.reader.thai_orthography_reader import ThaiOrthographyReader
-from thaiphon.renderers.morev import MorevRenderer
+import thaiphon
 
 
 @pytest.fixture
 def nfd():
-    """
-    Normalize to NFD to compare combining marks reliably.
-    Use as:
-        def test_x(..., nfd):
-            assert nfd(out) == nfd(expected)
+    """Return a helper that converts a string to NFD form.
+
+    Used to verify that the API normalizes NFD input to NFC before
+    processing, matching the result of NFC input.
     """
 
-    def _nfd(s: str) -> str:
-        return unicodedata.normalize("NFD", s)
+    def _nfd(text: str) -> str:
+        return unicodedata.normalize("NFD", text)
 
     return _nfd
 
 
 @pytest.fixture
-def thai_reader() -> ThaiOrthographyReader:
-    """Shared reader instance for tests."""
-    return ThaiOrthographyReader()
+def transcribe():
+    """Thin reference to :func:`thaiphon.transcribe`."""
+    return thaiphon.transcribe
 
 
 @pytest.fixture
-def morev_renderer() -> MorevRenderer:
-    """Shared renderer instance for tests."""
-    return MorevRenderer()
+def transcribe_sentence():
+    """Thin reference to :func:`thaiphon.transcribe_sentence`."""
+    return thaiphon.transcribe_sentence
 
 
 @pytest.fixture
-def morev_transcribe(thai_reader: ThaiOrthographyReader, morev_renderer: MorevRenderer):
-    """
-    Convenience helper:
-        out = morev_transcribe("ก้าวหนา")
-    """
-
-    def _transcribe(thai: str) -> str:
-        word = thai_reader.read_word(thai)
-        return morev_renderer.render(word)
-
-    return _transcribe
+def analyze():
+    """Thin reference to :func:`thaiphon.analyze`."""
+    return thaiphon.analyze

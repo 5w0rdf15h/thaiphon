@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "thaiphon"
-version = "0.0.1"
-description = "Thai phonology engine with pluggable transliteration systems (Morev, RTL, Paiboon+)."
+version = "0.2.0"
+description = "Thai phonology engine with pluggable transliteration systems."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "sb" }]
+authors = [{ name = "Boris Savinov" }]
 dependencies = []
 classifiers = [
   "License :: OSI Approved :: Apache Software License",
@@ -27,23 +27,31 @@ dev = [
   "mypy>=1.10",
 ]
 
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "ruff>=0.6",
+  "mypy>=1.10",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/thaiphon"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
-[tool.black]
-line-length = 88
-target-version = ["py310"]
-skip-string-normalization = false
-
-[tool.isort]
-profile = "black"
-line_length = 88
-
 [tool.ruff]
-line-length = 88
+line-length = 100
 target-version = "py310"
-select = ["E", "F", "I", "B"]
-ignore = []
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src/thaiphon"]

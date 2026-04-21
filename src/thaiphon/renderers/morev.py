@@ -1,195 +1,157 @@
+"""Morev (Cyrillic) scheme mapping + factory registration.
+
+Implements the Cyrillic transliteration tradition used by L. N. Morev and
+adopted in Russian-language Thai-teaching materials.
+
+Conventions:
+- Aspirated stops are written with the IPA modifier letter small H
+  (U+02B0) appended to the plain voiceless letter: /kʰ/ → кʰ, /tʰ/ → тʰ,
+  /pʰ/ → пʰ, /tɕʰ/ → чʰ.
+- /h/ → х; no collision with aspirated stops.
+- /ŋ/ → ң (U+04A3); /tɕ/ → ч.
+- Long vowels take a combining macron (U+0304).
+- Tones are rendered with combining diacritics on the main vowel:
+  LOW ̀ (U+0300), FALLING ̂ (U+0302), HIGH ́ (U+0301), RISING ̌ (U+030C).
+  MID is unmarked.
+- Output is NFC-normalized so diacritic insertion yields precomposed
+  forms where possible.
+"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+import unicodedata
 
-from thaiphon.errors import UnknownPhonemeError
-from thaiphon.phonology.model import PhonologicalWord, Syllable, Tone, VowelLength
-from thaiphon.renderers.base import Renderer
-from thaiphon.text.diacritics import apply_macron
+from thaiphon.model.enums import Tone, VowelLength
+from thaiphon.model.syllable import Syllable
+from thaiphon.registry import RENDERERS
+from thaiphon.renderers.mapping import MappingRenderer, SchemeMapping
 
-# Tone marks in Morev-style transcription:
-_TONE_SUFFIX = {
-    Tone.MID: "",
-    Tone.LOW: "ˆ",  # 1st tone (low)
-    Tone.FALLING: "`",  # 2nd tone (falling)
-    Tone.HIGH: "ˇ",  # 3rd tone (rising-falling in Morev description)
-    Tone.RISING: "´",  # 4th tone (rising)
-}
+# Combining diacritics.
+_MACRON = "\u0304"          # ̄
+_TONE_LOW = "\u0300"        # ̀
+_TONE_FALLING = "\u0302"    # ̂
+_TONE_HIGH = "\u0301"       # ́
+_TONE_RISING = "\u030c"     # ̌
 
-# Aspiration markers:
-_ASP_TEXT = "\u02e3"  # ˣ  (MODIFIER LETTER SMALL X)
-_ASP_HTML = "<sup>х</sup>"  # Cyrillic х in superscript (HTML)
-_ASP_PLAIN = "х"  # fallback if someone wants plain text without modifiers
+# IPA modifier letter small H — used for aspirated stops (U+02B0).
+_ASP = "\u02b0"
 
-# IMPORTANT:
-# Store base consonant outputs here (WITHOUT aspiration).
-# Aspiration is handled separately based on phoneme suffix "ʰ".
-_ONSET_BASE = {
+# IPA → Morev onset.
+_ONSET_MAP: dict[str, str] = {
     "k": "к",
-    "g": "к",  # Thai has no /g/ phonemically; keep as k-like for now
-    "p": "п",
-    "t": "т",
+    "kʰ": "к" + _ASP,
+    "tɕ": "ч",
+    "tɕʰ": "ч" + _ASP,
     "d": "д",
+    "t": "т",
+    "tʰ": "т" + _ASP,
     "b": "б",
-    "m": "м",
-    "n": "н",
-    "ŋ": "нг",
+    "p": "п",
+    "pʰ": "п" + _ASP,
+    "f": "ф",
     "s": "с",
     "h": "х",
-    "r": "р",
-    "l": "л",
-    "w": "в",  # onset w -> в
-    "j": "й",  # glide
-    "tɕ": "ть",  # จ-like
-    "tɕʰ": "ч",  # ช/ฉ-like; in Morev usually no "чˣ"
-    "f": "ф",
-}
-
-# Second consonant in clusters (r/l/w etc.) reuse same base mapping
-_C2_BASE = dict(_ONSET_BASE)
-_C2_BASE["w"] = "у"  # NEW: cluster glide w -> у
-
-# Coda mapping (final consonants are limited in Thai)
-_CODA = {
-    None: "",
+    "ʔ": "",
     "m": "м",
     "n": "н",
-    "ŋ": "нг",
-    "p": "п",
-    "t": "т",
-    "k": "к",
+    "ŋ": "ң",
     "j": "й",
+    "r": "р",
+    "l": "л",
+    "w": "в",
+}
+
+# (IPA quality, length) → Cyrillic vowel base. Long vowels append U+0304.
+_VOWEL_MAP: dict[tuple[str, VowelLength], str] = {
+    ("a", VowelLength.SHORT): "а",
+    ("a", VowelLength.LONG): "а" + _MACRON,
+    ("i", VowelLength.SHORT): "и",
+    ("i", VowelLength.LONG): "и" + _MACRON,
+    ("u", VowelLength.SHORT): "у",
+    ("u", VowelLength.LONG): "у" + _MACRON,
+    ("e", VowelLength.SHORT): "е",
+    ("e", VowelLength.LONG): "е" + _MACRON,
+    ("ɛ", VowelLength.SHORT): "э",
+    ("ɛ", VowelLength.LONG): "э" + _MACRON,
+    ("o", VowelLength.SHORT): "о",
+    ("o", VowelLength.LONG): "о" + _MACRON,
+    ("ɔ", VowelLength.SHORT): "о",
+    ("ɔ", VowelLength.LONG): "о" + _MACRON,
+    ("ɯ", VowelLength.SHORT): "ы",
+    ("ɯ", VowelLength.LONG): "ы" + _MACRON,
+    ("ɤ", VowelLength.SHORT): "ӧ",
+    ("ɤ", VowelLength.LONG): "ӧ" + _MACRON,
+    ("iə", VowelLength.SHORT): "иа",
+    ("iə", VowelLength.LONG): "иа",
+    ("ɯə", VowelLength.SHORT): "ыа",
+    ("ɯə", VowelLength.LONG): "ыа",
+    ("uə", VowelLength.SHORT): "уа",
+    ("uə", VowelLength.LONG): "уа",
+}
+
+# Coda IPA → Cyrillic letter.
+_CODA_MAP: dict[str, str] = {
+    "m": "м",
+    "n": "н",
+    "ŋ": "ң",
+    "p̚": "п",
+    "t̚": "т",
+    "k̚": "к",
+    "f": "ф",  # modern loan /f/ preservation
     "w": "у",
-    "ʔ": "",  # glottal stop is NOT written in Morev
+    "j": "й",
 }
 
-# Vowel nucleus mapping.
-_VOWEL = {
-    "a": ("а", 0),
-    "i": ("и", 0),
-    "ɯ": ("ы", 0),
-    "u": ("у", 0),
-    "e": ("е", 0),
-    "ə": ("ə", 0),
-    "ɔ": ("ɔ", 0),
-    "o": ("о", 0),
-    "æ": ("э", 0),
-    "ɛ": ("э", 0),
-    "ia": ("иа", 0),
-    "ɯa": ("ыа", 0),
-    "ua": ("уа", 0),
-    "ai": ("ай", 0),
-    "au": ("ау", 0),
-    "oi": ("ой", 0),
-    "ui": ("уй", 0),
+_TONE_COMBINING: dict[Tone, str] = {
+    Tone.MID: "",
+    Tone.LOW: _TONE_LOW,
+    Tone.FALLING: _TONE_FALLING,
+    Tone.HIGH: _TONE_HIGH,
+    Tone.RISING: _TONE_RISING,
 }
-# do not add macron to diphthongs (ai/au/oi/ui).
-_DIPHTHONGS_NO_MACRON = {"ai", "au", "oi", "ui"}
+
+# Cyrillic base-vowel letters we emit (before any macron).
+_VOWEL_LETTERS: frozenset[str] = frozenset("аеиоуыэӧ")
 
 
-def _split_aspirated(phoneme: str) -> tuple[str, bool]:
-    """
-    Returns (base_phoneme, is_aspirated).
-    Example: 'kʰ' -> ('k', True)
-             'tɕʰ' -> ('tɕʰ', False)  # special-cased, because we map it directly to 'ч'
-    """
-    # We treat tɕʰ as its own unit because Morev typically writes it as 'ч' (no aspiration marker).
-    if phoneme == "tɕʰ":
-        return phoneme, False
-    if phoneme.endswith("ʰ"):
-        return phoneme[:-1], True
-    return phoneme, False
+def _tone_format(base: str, syl: Syllable) -> str:
+    combining = _TONE_COMBINING[syl.tone]
+    if not combining:
+        return unicodedata.normalize("NFC", base)
+    # Insert the tone mark AFTER the last vowel letter (and after its
+    # macron, if present) so both diacritics sit on the same base.
+    last = -1
+    for i, ch in enumerate(base):
+        if ch in _VOWEL_LETTERS:
+            last = i
+    if last < 0:
+        return unicodedata.normalize("NFC", base + combining)
+    insert_at = last + 1
+    if insert_at < len(base) and base[insert_at] == _MACRON:
+        insert_at += 1
+    combined = base[:insert_at] + combining + base[insert_at:]
+    return unicodedata.normalize("NFC", combined)
 
 
-def _map_consonant_base(table, ph: str, where: str) -> str:
-    if ph == "":
-        return ""  # <- allow zero onset (carrier อ)
-    try:
-        return table[ph]
-    except KeyError as e:
-        raise UnknownPhonemeError(f"Unknown {where} phoneme: {ph!r}") from e
+MOREV_MAPPING: SchemeMapping = SchemeMapping(
+    scheme_id="morev",
+    onset_map=_ONSET_MAP,
+    vowel_map=_VOWEL_MAP,
+    coda_map=_CODA_MAP,
+    tone_format=_tone_format,
+    cluster_joiner="",
+    syllable_separator="-",
+    empty_onset="",
+    unknown_fallback="?",
+)
 
 
-def _asp_marker(style: Literal["text", "html", "plain"]) -> str:
-    if style == "text":
-        return _ASP_TEXT
-    if style == "html":
-        return _ASP_HTML
-    if style == "plain":
-        return _ASP_PLAIN
-    raise ValueError(f"Unknown aspiration_style: {style!r}")
+def _factory() -> MappingRenderer:
+    return MappingRenderer(MOREV_MAPPING)
 
 
-def _render_onset_phoneme(
-    phoneme: str,
-    where: str,
-    style: Literal["text", "html", "plain"],
-    table: dict[str, str],
-) -> str:
-    base, asp = _split_aspirated(phoneme)
-    out = _map_consonant_base(table, base, where)
-    if asp:
-        out += _asp_marker(style)
-    return out
+if "morev" not in RENDERERS:
+    RENDERERS.register("morev", _factory)
 
 
-def _render_syllable(
-    s: Syllable,
-    aspiration_style: Literal["text", "html", "plain"],
-    mark_tones: bool,
-) -> str:
-    # onset (special-case w: can be rendered as 'у' before back-ish vowels in this system)
-    if s.onset.c1 == "w":
-        w_as_u = {"a", "ɔ", "o", "u", "ua", "au", "ai"}  # tweakable set
-        c1 = "у" if s.vowel.nucleus in w_as_u else "в"
-    else:
-        c1 = _render_onset_phoneme(
-            s.onset.c1, "onset.c1", aspiration_style, _ONSET_BASE
-        )
-
-    c2 = ""
-    if s.onset.c2:
-        c2 = _render_onset_phoneme(s.onset.c2, "onset.c2", aspiration_style, _C2_BASE)
-    onset = c1 + c2
-
-    # vowel (REMOVE duplicate lookup)
-    nuc, macron_pos = _VOWEL.get(s.vowel.nucleus, (None, None))
-    if nuc is None:
-        raise UnknownPhonemeError(f"Unknown vowel nucleus: {s.vowel.nucleus!r}")
-
-    if (
-        s.vowel.length == VowelLength.LONG
-        and s.vowel.nucleus not in _DIPHTHONGS_NO_MACRON
-    ):
-        nuc = apply_macron(nuc, macron_pos)
-
-    # offglide
-    if s.vowel.offglide == "j":
-        nuc += "й"
-    elif s.vowel.offglide == "w":
-        nuc += "у"
-    elif s.vowel.offglide is not None:
-        raise UnknownPhonemeError(f"Unknown vowel offglide: {s.vowel.offglide!r}")
-
-    # coda
-    coda = _CODA.get(s.coda.phoneme, None)
-    if coda is None:
-        raise UnknownPhonemeError(f"Unknown coda phoneme: {s.coda.phoneme!r}")
-
-    tone = _TONE_SUFFIX[s.tone] if mark_tones else ""
-
-    return f"{onset}{nuc}{coda}{tone}"
-
-
-@dataclass(frozen=True)
-class MorevRenderer(Renderer):
-    system_id: str = "morev"
-    aspiration_style: Literal["text", "html", "plain"] = "text"
-    mark_tones: bool = True
-
-    def render(self, word: PhonologicalWord) -> str:
-        return "-".join(
-            _render_syllable(s, self.aspiration_style, self.mark_tones)
-            for s in word.syllables
-        )
+__all__ = ["MOREV_MAPPING"]

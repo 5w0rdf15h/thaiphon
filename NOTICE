@@ -1,0 +1,11 @@
+thaiphon
+Copyright 2026 thaiphon contributors
+
+This product includes software developed by the PyThaiNLP Project
+(https://github.com/PyThaiNLP/pythainlp), licensed under the Apache License 2.0.
+
+The following files are derived from PyThaiNLP:
+  - src/thaiphon/tokenization/tcc.py (from pythainlp/tokenize/tcc.py)
+  - src/thaiphon/segmentation/longest.py (from pythainlp/tokenize/longest.py)
+
+Original copyright and license notices are preserved in the derived files.

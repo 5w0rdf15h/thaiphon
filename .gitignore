@@ -10,3 +10,4 @@ thdict.py
 transcribe.py
 .python-version
 .idea
+.DS_Store
