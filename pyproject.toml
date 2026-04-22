@@ -1,12 +1,12 @@
 [build-system]
-requires = ["hatchling>=1.20"]
+requires = ["hatchling>=1.20", "hatch-fancy-pypi-readme"]
 build-backend = "hatchling.build"
 
 [project]
 name = "thaiphon"
 version = "0.2.0"
 description = "Thai phonology engine with pluggable transliteration systems."
-readme = "README.md"
+dynamic = ["readme"]
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Boris Savinov" }]
@@ -36,6 +36,16 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/thaiphon"]
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'thaiphon/main/docs/pipeline\.png'
+replacement = 'thaiphon/v$HFPR_VERSION/docs/pipeline.png'
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

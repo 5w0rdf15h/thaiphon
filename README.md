@@ -217,7 +217,7 @@ transcribe("สวัสดี", scheme="ped")
 
 ## Architecture
 
-![The thaiphon pipeline — Thai text flows through normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer, fanning out to IPA, TLC, or Morev surface strings](docs/pipeline.svg)
+![The thaiphon pipeline — Thai text flows through normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer, fanning out to IPA, TLC, or Morev surface strings](https://raw.githubusercontent.com/5w0rdf15h/thaiphon/main/docs/pipeline.png)
 
 Key design decisions:
 
