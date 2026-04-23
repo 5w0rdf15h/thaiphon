@@ -1,10 +1,11 @@
 """Morev (Cyrillic) scheme mapping + factory registration.
 
-Implements the Cyrillic transcription of Thai used by L. N. Morev and
-N. F. Plam in the 1969 Thai-Russian dictionary and adopted in
-Russian-language Thai-teaching materials. Surface conventions follow
-the alphabet table at the head of that dictionary; the same conventions
-appear in subsequent Morev-tradition reference works.
+Implements the Cyrillic transcription of Thai used by L. N. Morev,
+Yu. Ya. Plam, and M. F. Fomicheva in the 1964 Thai-Russian dictionary
+and adopted in Russian-language Thai-teaching materials. Surface
+conventions follow the alphabet table at the head of that dictionary;
+the same conventions appear in subsequent Morev-tradition reference
+works.
 
 Surface conventions:
 
@@ -42,7 +43,7 @@ Surface conventions:
 - Foreign-origin codas that no native syllable supports collapse to
   the nearest native stop or nasal: /f/ → ``п``, /s/ → ``т``, /l/ → ``н``.
   This matches the dictionary's treatment of recent loans
-  (``ก๊าซ`` → ``ка̄тˇ``, ``โบนัส`` → ``бо̄-натˇ``, ``ฟุตบอล`` → ``футˆ-бо̄н``,
+  (``ก๊าซ`` → ``ка̄тˇ``, ``โบนัส`` → ``бо̄-натˇ``, ``ฟุตบอล`` → ``футˇ-бо̄н``,
   ``ปรู๊ฟ`` → ``прӯпˇ``).
 - Syllable separator is ``-``.
 """

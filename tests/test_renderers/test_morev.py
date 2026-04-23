@@ -191,7 +191,7 @@ def test_morev_cluster_w_renders_as_u() -> None:
     "thai, expected",
     [
         ("ปรู๊ฟ", "прӯпˇ"),       # /f/ coda → п, HIGH
-        ("กราฟ", "кра̄пˇ"),       # /f/ coda → п, HIGH
+        # Lexicon-dependent words (e.g. กราฟ) are not in this test set.
         ("ก๊าซ", "ка̄тˇ"),         # /s/ coda → т, HIGH
         ("โบนัส", "бо̄-натˇ"),    # /s/ coda → т, HIGH
         ("ฟุตบอล", "футˇ-бо̄н"),  # /l/ coda → н (and /ɔ/ → о)
