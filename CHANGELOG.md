@@ -6,6 +6,46 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0]
+
+### Added
+
+- **`rtl` scheme** — romanization for the Rak Thai Language School
+  convention. Aspirated stops as digraphs (`ph`, `th`, `kh`); /tɕ/ as
+  `c` and /tɕʰ/ as `ch`. Vowel-initial syllables emit an explicit `ʼ`
+  (U+02BC) onset. Mid tone is marked with a macron (low `̀`, falling
+  `̂`, high `́`, rising `̌`). IPA-letter vowels `ʉ ɛ ɔ ə` double for
+  length; centring diphthongs carry the tone mark on the first
+  element. Foreign codas collapse to the native inventory (/f/ → `p`,
+  /s/ → `t`, /l/ → `n`). Syllable separator is a single space.
+
+- **`paiboon` scheme** — the original Paiboon Publishing romanization
+  used in the first-edition learner series. Aspirated stops take bare
+  letters (`p`, `t`, `k`, `ch`); unaspirated voiceless stops use
+  English-cluster digraphs (`bp`, `dt`, `g`, `j`). IPA-letter vowels
+  `ʉ ɛ ɔ ə` double for length. Centring diphthongs have no spelling
+  distinction between short and long — both render as `ia`, `ʉa`,
+  `ua`. /iː/+/w/ spells `iao`; short /i/+/w/ spells `iu`.
+
+- **`paiboon_plus` scheme** — the revised system adopted in the 2009
+  Three-Way dictionary and later titles. Identical to `paiboon`
+  except centring diphthongs double for length (short `ia ʉa ua`,
+  long `iia ʉʉa uua`) and the triphthong-like combinations follow
+  suit (`iiao`, `uuai`, `ʉʉai`).
+
+- `SchemeMapping` gained an optional `tone_format_html` field so a
+  scheme can emit different tone markup for `format="html"` without
+  affecting the plain-text output.
+
+### Changed
+
+- **TLC HTML output emits tone markers as `<sup>` tags.** Under
+  `format="html"`, `thaiphon.transcribe(word, "tlc", format="html")`
+  returns e.g. `naam<sup>H</sup>` instead of the literal `naam{H}`,
+  matching the thai-language.com presentation convention. The
+  default text output (`format="text"`, or the bare `transcribe`
+  call) is unchanged.
+
 ## [0.3.0]
 
 ### Added

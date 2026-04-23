@@ -9,7 +9,7 @@ from thaiphon.api import (
     transcribe_word,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 __all__ = [
     "__version__",
     "analyze",
