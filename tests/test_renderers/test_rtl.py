@@ -22,11 +22,23 @@ Surface conventions verified:
 
 from __future__ import annotations
 
+import importlib.util
 import unicodedata
 
 import pytest
 
 import thaiphon
+
+
+# Words whose canonical long-vowel pronunciation lives in the optional
+# ``thaiphon-data-volubilis`` data package are gated behind this marker;
+# without the lexicon the reader falls back to productive rules and gives
+# a shorter rule-only surface.
+_HAS_VOLUBILIS = importlib.util.find_spec("thaiphon_data_volubilis") is not None
+_needs_volubilis = pytest.mark.skipif(
+    not _HAS_VOLUBILIS,
+    reason="requires thaiphon-data-volubilis",
+)
 
 
 def _nfc(s: str) -> str:
@@ -180,10 +192,17 @@ def test_open_mid_vowels() -> None:
     assert _render("ขอ") == _nfc("khɔ̌ɔ")
 
 
-def test_high_central_and_mid_central_vowels() -> None:
-    # ผึ้ง /pʰɯ̂ŋ/ — short /ɯ/ (printed as ʉ) + /ŋ/ + falling.
+def test_high_central_vowel() -> None:
+    # ผึ้ง /pʰɯ̂ŋ/ — short /ɯ/ (printed as ʉ) + /ŋ/ + falling. Works on
+    # productive rules alone, no lexicon needed.
     assert _render("ผึ้ง") == _nfc("phʉ̂ŋ")
-    # เลย /lɤ̄ːj/ — long /ɤː/ (printed as ə) + /j/ + mid.
+
+
+@_needs_volubilis
+def test_mid_central_vowel_long() -> None:
+    # เลย /lɤ̄ːj/ — canonical long /ɤː/ (printed as ``əə``) + /j/ + mid
+    # tone. The long vowel length is a lexicon lookup; rule-only parsing
+    # of this orthographic frame gives a short /ɤ/ instead.
     assert _render("เลย") == _nfc("lə̄əy")
 
 

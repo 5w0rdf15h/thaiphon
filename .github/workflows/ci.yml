@@ -5,7 +5,13 @@ on:
   pull_request:
 
 jobs:
+  # Default-configuration tests — no optional data package. This is the
+  # release gate: the published wheel installs without any lexicon, so
+  # the test suite has to be green without one too. Any test pinning a
+  # lexicon-informed expected surface must be guarded with the local
+  # ``_needs_volubilis`` skipif marker.
   test:
+    name: "test (py${{ matrix.python-version }}, no lexicon)"
     runs-on: ubuntu-latest
 
     strategy:
@@ -26,6 +32,38 @@ jobs:
 
       - name: Install (dev)
         run: make dev
+
+      - name: Run tests
+        run: make test
+
+  # Same matrix, but with the optional ``thaiphon-data-volubilis`` data
+  # package installed. Exercises the lexicon-gated code paths and the
+  # tests that skip in the default configuration.
+  test-with-lexicon:
+    name: "test (py${{ matrix.python-version }}, with lexicon)"
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install (dev)
+        run: make dev
+
+      - name: Install thaiphon-data-volubilis
+        run: uv pip install thaiphon-data-volubilis
 
       - name: Run tests
         run: make test

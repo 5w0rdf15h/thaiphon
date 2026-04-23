@@ -22,11 +22,25 @@ Reference conventions verified:
 
 from __future__ import annotations
 
+import importlib.util
 import unicodedata
 
 import pytest
 
 import thaiphon
+
+
+# A handful of words in these tests pin the lexicon-informed pronunciation
+# (e.g. ``เสื้อ`` as a single-syllable centring diphthong). Without the
+# optional ``thaiphon-data-volubilis`` data package installed the reader
+# falls back to productive rules and emits a different surface, so those
+# cases are skipped in the lib-only configuration that matches how the
+# published wheel installs.
+_HAS_VOLUBILIS = importlib.util.find_spec("thaiphon_data_volubilis") is not None
+_needs_volubilis = pytest.mark.skipif(
+    not _HAS_VOLUBILIS,
+    reason="requires thaiphon-data-volubilis",
+)
 
 
 def _nfc(s: str) -> str:
@@ -186,7 +200,10 @@ def test_ipa_letter_vowels_paiboon_plus(thai: str, expected: str) -> None:
 @pytest.mark.parametrize(
     "thai, paiboon, paiboon_plus",
     [
-        ("เสื้อ", "sʉ̂a", "sʉ̂ʉa"),   # from the reference example phrase
+        pytest.param(
+            "เสื้อ", "sʉ̂a", "sʉ̂ʉa",   # needs lexicon for the centring frame
+            marks=_needs_volubilis,
+        ),
         ("เรือ", "rʉa", "rʉʉa"),
         ("เมีย", "mia", "miia"),
         ("มัว", "mua", "muua"),
@@ -291,6 +308,7 @@ def test_multi_syllable_words(
 # ---------------------------------------------------------------------------
 
 
+@_needs_volubilis
 def test_reference_phrase_paiboon_plus() -> None:
     words = ["คุณ", "เก็บ", "เสื้อ", "ไว้", "ไหน"]
     expected = ["kun", "gèp", "sʉ̂ʉa", "wái", "nǎi"]
@@ -298,6 +316,7 @@ def test_reference_phrase_paiboon_plus() -> None:
         assert _pp(thai) == _nfc(exp), (thai, _pp(thai), exp)
 
 
+@_needs_volubilis
 def test_reference_phrase_paiboon() -> None:
     words = ["คุณ", "เก็บ", "เสื้อ", "ไว้", "ไหน"]
     expected = ["kun", "gèp", "sʉ̂a", "wái", "nǎi"]

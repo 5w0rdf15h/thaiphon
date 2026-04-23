@@ -17,17 +17,37 @@ tone. Every output scheme is then a small declarative `SchemeMapping`
 that renames those phonemes into a target surface form. Add a new
 scheme by writing data, not code.
 
-Three built-in renderers ship with the package:
+Six built-in renderers ship with the package:
 
 - **`ipa`** — IPA with tone contour digits (the default phonological
   representation used for the Wiktionary benchmark).
 - **`tlc`** — thai-language.com "Enhanced Phonemic" with bracketed tone
-  tags (`{M}`, `{L}`, `{H}`, `{F}`, `{R}`).
+  tags (`{M}`, `{L}`, `{H}`, `{F}`, `{R}`). Supports `format="html"`,
+  which emits the tone markers as `<sup>` tags instead of braces
+  (`naam<sup>H</sup>`) to match the thai-language.com rendering.
 - **`morev`** — Cyrillic transliteration following the Russian-language
-  tradition.
+  tradition. Aspirated stops as digraphs (`кх`, `тх`, `пх`) in text
+  mode and as `к<sup>х</sup>` etc in HTML mode.
+- **`rtl`** — Rak Thai Language School convention. IPA-style vowels
+  (`ʉ ɛ ɔ ə`), aspirated-stop digraphs (`ph`, `th`, `kh`, `ch`), an
+  explicit `ʼ` (U+02BC) for vowel-initial syllables, and a macron on
+  mid-tone vowels. Syllable separator is a single space.
+- **`paiboon`** — the original Paiboon Publishing romanization used in
+  the first-edition *Thai for Beginners* series. Aspirated stops take
+  bare letters (`p`, `t`, `k`, `ch`); unaspirated voiceless stops use
+  English-cluster digraphs (`bp`, `dt`, `g`, `j`). IPA-style vowels
+  double for length (`aa`, `ii`, `ʉʉ`). Centring diphthongs have no
+  short/long distinction in spelling (`ia`, `ʉa`, `ua`). Syllable
+  separator is `-`.
+- **`paiboon_plus`** — the revised system adopted in the 2009
+  Three-Way dictionary. Identical to `paiboon` except the centring
+  diphthongs double for length (short `ia ʉa ua`, long `iia ʉʉa uua`)
+  and the triphthong-like combinations follow suit (`iiao`, `uuai`,
+  `ʉʉai`).
 
-Custom schemes (Paiboon+, RTGS, or your own pedagogical convention) are
-straightforward to register via `SchemeMapping`.
+Additional schemes (RTGS, your own pedagogical convention, …) are
+straightforward to register via `SchemeMapping` — see
+[Custom schemes](#custom-schemes).
 
 ## Install
 
@@ -148,15 +168,27 @@ from thaiphon import (
 
 # Discover available schemes.
 list_schemes()
-# ('ipa', 'morev', 'tlc')
+# ('ipa', 'morev', 'paiboon', 'paiboon_plus', 'rtl', 'tlc')
 
 # IPA — the phonological representation.
 transcribe("ภูมิ", scheme="ipa")
 # '/pʰuːm˧/'
 
-# TLC — thai-language.com convention.
+# TLC — thai-language.com convention (braces by default; <sup> in HTML).
 transcribe("ลิฟต์", scheme="tlc")
 # 'lif{H}'
+transcribe("ลิฟต์", scheme="tlc", format="html")
+# 'lif<sup>H</sup>'
+
+# Paiboon / Paiboon+ — textbook romanizations.
+transcribe("เสื้อ", scheme="paiboon")
+# 'sʉ̂a'
+transcribe("เสื้อ", scheme="paiboon_plus")
+# 'sʉ̂ʉa'
+
+# RTL School convention.
+transcribe("ภาษาไทย", scheme="rtl")
+# 'phāa sǎa thāy'
 
 # Single-word shortcut that skips sentence tokenization.
 transcribe_word("สวัสดี", scheme="ipa")
@@ -282,7 +314,7 @@ transcribe("สวัสดี", scheme="ped")
 
 ## Architecture
 
-![The thaiphon pipeline — Thai text flows through normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer, fanning out to IPA, TLC, or Morev surface strings](https://raw.githubusercontent.com/5w0rdf15h/thaiphon/main/docs/pipeline.png)
+![The thaiphon pipeline — Thai text flows through normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer, fanning out to IPA, TLC, Morev, RTL, and Paiboon surface strings](https://raw.githubusercontent.com/5w0rdf15h/thaiphon/main/docs/pipeline.png)
 
 Key design decisions:
 
