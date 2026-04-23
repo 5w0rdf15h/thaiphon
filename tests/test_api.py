@@ -143,6 +143,32 @@ def test_format_html_is_accepted() -> None:
     assert isinstance(result, str)
 
 
+def test_tlc_html_tone_is_superscript() -> None:
+    # HTML output wraps the tone letter in ``<sup>`` instead of emitting
+    # the bracketed ``{X}`` form used by the text scheme. กา is mid tone.
+    text = transcribe("กา", scheme="tlc", format="text")
+    html = transcribe("กา", scheme="tlc", format="html")
+    assert "{M}" in text
+    assert "{M}" not in html
+    assert "<sup>M</sup>" in html
+
+
+def test_tlc_html_tone_covers_all_five_tones() -> None:
+    # One representative word per tone; HTML must emit the matching
+    # superscript letter and never the bracketed text form.
+    cases = {
+        "กา": "M",    # mid
+        "ข่า": "L",   # low
+        "ค้า": "H",   # high
+        "ข้า": "F",   # falling
+        "ขา": "R",    # rising
+    }
+    for word, letter in cases.items():
+        html = transcribe(word, scheme="tlc", format="html")
+        assert f"<sup>{letter}</sup>" in html, (word, html)
+        assert "{" not in html, (word, html)
+
+
 # ---------------------------------------------------------------------------
 # transcribe — profile argument
 # ---------------------------------------------------------------------------

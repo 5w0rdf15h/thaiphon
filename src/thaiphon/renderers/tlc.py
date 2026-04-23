@@ -107,6 +107,18 @@ _TONE_TAG: dict[Tone, str] = {
     Tone.RISING: "{R}",
 }
 
+# HTML form of the tone marker: the same M/L/H/F/R letter wrapped in
+# ``<sup>`` so it renders as a superscript next to the syllable. No CSS
+# classes are emitted — consumers style the ``<sup>`` element directly
+# if they want per-tone colouring.
+_TONE_TAG_HTML: dict[Tone, str] = {
+    Tone.MID: "<sup>M</sup>",
+    Tone.LOW: "<sup>L</sup>",
+    Tone.HIGH: "<sup>H</sup>",
+    Tone.FALLING: "<sup>F</sup>",
+    Tone.RISING: "<sup>R</sup>",
+}
+
 # Minimum foreignness score at which an out-of-lexicon ฟ-coda is
 # preserved as surface /f/ rather than collapsed to native /p̚/. Only
 # consulted for words without a lexicon entry; lexicon members use the
@@ -138,6 +150,10 @@ _PRESERVATION_CONFIG: dict[str, tuple[str, frozenset[str], str]] = {
 
 def _tone_format(base: str, syl: Syllable) -> str:
     return base + _TONE_TAG[syl.tone]
+
+
+def _tone_format_html(base: str, syl: Syllable) -> str:
+    return base + _TONE_TAG_HTML[syl.tone]
 
 
 def _syllable_carries(
@@ -248,6 +264,7 @@ TLC_MAPPING: SchemeMapping = SchemeMapping(
     vowel_context_map=_VOWEL_CONTEXT,
     word_coda_override=_lexicon_coda_override,
     tone_format=_tone_format,
+    tone_format_html=_tone_format_html,
     cluster_joiner="",
     syllable_separator=" ",
     empty_onset="",

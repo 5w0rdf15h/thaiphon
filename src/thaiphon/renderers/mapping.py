@@ -41,6 +41,12 @@ class SchemeMapping:
     # text and HTML output (typically aspirated stops formatted with
     # superscript markup).
     onset_html_map: Mapping[str, str] | None = None
+    # Optional: alternate tone formatter used only when ``ctx.format ==
+    # "html"``. When absent, ``tone_format`` is used for both text and
+    # HTML. Schemes declare this when their HTML tone presentation
+    # differs from the plain-text form (e.g. wrapping a tone letter in
+    # ``<sup>`` instead of emitting bracketed tags).
+    tone_format_html: Callable[[str, Syllable], str] | None = None
     # Optional: alternate onset map used for the second slot of a true
     # CC onset cluster. Lets schemes spell a phoneme differently when it
     # appears as the post-consonantal glide in a cluster (e.g. /w/ in
@@ -127,6 +133,8 @@ class MappingRenderer:
                     coda_str = replacement
 
         base = onset_str + vowel_str + coda_str
+        if fmt == "html" and m.tone_format_html is not None:
+            return m.tone_format_html(base, syl)
         return m.tone_format(base, syl)
 
     def render_word(self, word: PhonologicalWord, ctx: RenderContext) -> str:
