@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1240" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1320" role="img"
      aria-labelledby="pipeline-title pipeline-desc"
      font-family="'Nunito Sans', 'Helvetica Neue', sans-serif">
   <title id="pipeline-title">The thaiphon pipeline</title>
-  <desc id="pipeline-desc">Thai text flows top to bottom through six stages — normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer — and emerges as a surface string in IPA, TLC, or Morev.</desc>
+  <desc id="pipeline-desc">Thai text flows top to bottom through six stages — normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer — and emerges as a surface string in IPA, TLC, Morev, RTL, or Paiboon.</desc>
 
   <defs>
     <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
@@ -34,19 +34,19 @@
   </defs>
 
   <!-- Background -->
-  <rect width="720" height="1240" fill="url(#paper)"/>
-  <rect width="720" height="1240" fill="url(#grain)"/>
+  <rect width="720" height="1320" fill="url(#paper)"/>
+  <rect width="720" height="1320" fill="url(#grain)"/>
 
   <!-- Eyebrow title -->
   <g transform="translate(360, 42)" text-anchor="middle">
-    <text font-size="10" letter-spacing="3" fill="#8a6a1e" font-weight="700">T H E   P I P E L I N E</text>
+    <text xml:space="preserve" font-size="10" letter-spacing="3" fill="#8a6a1e" font-weight="700">T H E   P I P E L I N E</text>
     <line x1="-22" y1="11" x2="22" y2="11" stroke="#c49a3c" stroke-width="1.5"/>
   </g>
 
   <!-- INPUT chip -->
   <g transform="translate(260, 70)">
     <rect width="200" height="76" rx="10" fill="#2d2768" filter="url(#softShadow)"/>
-    <text x="100" y="26" text-anchor="middle" font-size="9" letter-spacing="2" fill="#d4af5a" font-weight="700">INPUT · THAI TEXT</text>
+    <text xml:space="preserve" x="100" y="26" text-anchor="middle" font-size="9" letter-spacing="2" word-spacing="6" fill="#d4af5a" font-weight="700">INPUT · THAI TEXT</text>
     <line x1="84" y1="34" x2="116" y2="34" stroke="#c49a3c" stroke-width="1" opacity=".5"/>
     <text x="100" y="60" text-anchor="middle" font-size="28" fill="#fffdf8" font-family="'Sarabun','Prompt',sans-serif" font-weight="600">ภาษาไทย</text>
   </g>
@@ -123,14 +123,19 @@
     </g>
   </g>
 
-  <!-- Fan-out connectors to 3 output chips -->
+  <!-- Fan-out connectors — three to row-1 chips (IPA/TLC/Morev), two
+       dropping straight through the gaps between them to row-2 chips
+       (RTL/Paiboon) at y=1070. -->
   <path d="M 360 890 C 360 922, 200 932, 140 968" fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
   <path d="M 360 890 L 360 968" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
   <path d="M 360 890 C 360 922, 520 932, 580 968" fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 250 890 L 250 1058" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 470 890 L 470 1058" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
 
-  <!-- Output eyebrow -->
+  <!-- Output eyebrow — paper-colour stroke halo so the TLC centre
+       arrow reads cleanly through the text. -->
   <g transform="translate(360, 956)" text-anchor="middle">
-    <text font-size="9" letter-spacing="3" fill="#8a6a1e" font-weight="700">S U R F A C E   S T R I N G</text>
+    <text xml:space="preserve" font-size="9" letter-spacing="3" paint-order="stroke" stroke="#faf7f0" stroke-width="4" stroke-linejoin="round" fill="#5a4510" font-weight="700">S U R F A C E   S T R I N G</text>
   </g>
 
   <!-- IPA output -->
@@ -141,12 +146,12 @@
     <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768">pʰaː.sǎː.tʰaj</text>
   </g>
 
-  <!-- TLC output -->
+  <!-- TLC output (tones as superscript, matching thai-language.com) -->
   <g transform="translate(260, 980)">
     <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
     <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">TLC</text>
     <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
-    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768">paa saa{R} tai{M}</text>
+    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768" xml:space="preserve"><tspan>paa saa</tspan><tspan dy="-5" font-size="10">R</tspan><tspan dy="5" font-size="14"> tai</tspan><tspan dy="-5" font-size="10">M</tspan></text>
   </g>
 
   <!-- Morev output (uses tspan superscript for aspirated stops) -->
@@ -157,11 +162,28 @@
     <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768" xml:space="preserve"><tspan>п</tspan><tspan dy="-5" font-size="10">х</tspan><tspan dy="5" font-size="14">а̄-са̄´-т</tspan><tspan dy="-5" font-size="10">х</tspan><tspan dy="5" font-size="14">ай</tspan></text>
   </g>
 
+  <!-- RTL output (Rak Thai Language School) — tone mark lands on the
+       first vowel letter of each syllable; mid tone = macron. -->
+  <g transform="translate(150, 1070)">
+    <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">RTL</text>
+    <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768">phāa sǎa thāy</text>
+  </g>
+
+  <!-- Paiboon output — mid tone unmarked, háček on the rising syllable. -->
+  <g transform="translate(370, 1070)">
+    <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">PAIBOON</text>
+    <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768">paa-sǎa-tai</text>
+  </g>
+
   <!-- Footer ornament -->
-  <g transform="translate(360, 1110)" text-anchor="middle">
+  <g transform="translate(360, 1200)" text-anchor="middle">
     <line x1="-60" y1="0" x2="-10" y2="0" stroke="url(#goldRule)" stroke-width="1"/>
     <circle cx="0" cy="0" r="2" fill="#c49a3c"/>
     <line x1="10" y1="0" x2="60" y2="0" stroke="url(#goldRule)" stroke-width="1"/>
   </g>
-  <text x="360" y="1140" text-anchor="middle" font-size="11" fill="#9994ab" font-style="italic">One phonological word, many surface notations.</text>
+  <text x="360" y="1230" text-anchor="middle" font-size="11" fill="#9994ab" font-style="italic">One phonological word, many surface notations.</text>
 </svg>
