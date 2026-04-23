@@ -6,6 +6,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1]
+
+### Fixed
+
+- Test suite no longer requires the optional `thaiphon-data-volubilis`
+  data package to be installed to pass. A handful of tests pinning
+  lexicon-informed surfaces (เสื้อ single-syllable centring diphthong,
+  the Paiboon reference phrase, long /ɤː/ for เลย) now skip cleanly on
+  a minimal install via a local `pytest.mark.skipif` guard. The
+  default-configuration test gate matches the published wheel.
+
+### Changed
+
+- CI matrix (Python 3.10 / 3.11 / 3.12) now runs in two separate
+  jobs — one without the `thaiphon-data-volubilis` data package
+  installed (the default published-wheel configuration) and one with
+  it — so any test that accidentally depends on the lexicon surfaces
+  as a failure before merge.
+- README: built-in renderer list expanded to document all six schemes
+  (`ipa`, `tlc`, `morev`, `rtl`, `paiboon`, `paiboon_plus`) and the
+  TLC `format="html"` superscript tone output, bringing the landing
+  page in line with the 0.4.0 feature set. Pipeline diagram
+  regenerated to include the new schemes.
+
 ## [0.4.0]
 
 ### Added
