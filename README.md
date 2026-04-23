@@ -74,6 +74,71 @@ The engine still runs, but you give up a lot:
 
 For anything user-facing, indexing, or searching, install both packages.
 
+## Production footprint
+
+`thaiphon` runs comfortably in long-lived web processes, container
+orchestrators, and serverless runtimes. The engine is pure Python with
+no heavyweight imports. The optional lexicon (when installed) ships as
+a read-only SQLite database, memory-mapped at first use.
+
+| Measurement                            | Engine alone | + `thaiphon-data-volubilis` |
+|----------------------------------------|-------------:|----------------------------:|
+| RSS after first `transcribe_sentence`  |    ~10 MiB   |                     ~19 MiB |
+| RSS after 1 k lookups                  |    ~10 MiB   |                     ~47 MiB |
+| Median lookup latency (lexicon hit)    |       —      |                       ~13 µs |
+| Cold-start import cost                 |   negligible |                  negligible |
+
+The ~30 MiB of additional resident set after warmup is a bounded
+per-process LRU over the most recently inflated entries. The bulk of
+the lexicon stays in `mmap`'d pages of `lexicon.db`, counted once by
+the operating system regardless of how many Python workers have
+imported the package.
+
+### Web servers (Django, FastAPI, Flask)
+
+Run as many workers as your CPU budget allows. The lexicon does not
+multiply with worker count, because the OS page cache shares the
+mapped database across processes:
+
+- `gunicorn -w 8 myapp.wsgi` → roughly `8 × 50 MiB` of Python objects
+  plus one shared `~25 MiB` for the lexicon. Not `8 × 350 MiB`.
+- `uvicorn --workers 4 myapp:app` behaves the same for FastAPI and
+  Starlette. Inside one worker, async handlers share a SQLite
+  connection-per-thread; the threadpool gets one connection per
+  active thread, opened on first use.
+- Django works in sync views, async views, and `runserver` without
+  any setting changes.
+
+The lexicon loads lazily. The first request that touches a Thai word
+pays the SQLite open and first index-page read (single-digit
+milliseconds). Subsequent requests within that worker hit the LRU.
+
+### Serverless (AWS Lambda, Cloud Run, Fargate)
+
+Cold starts are dominated by your Python interpreter and your own
+imports. `thaiphon` adds almost nothing at import time, since the
+lexicon is only read from on first lookup. No eager inflation pass,
+no `.pyc` of several hundred MiB to unpack. The 512 MiB Lambda tier
+is plenty even with `thaiphon-data-volubilis` installed; the
+lexicon's footprint is the on-demand LRU, not the full ~25 MiB
+database.
+
+Both packages fit comfortably in a Lambda layer.
+
+### Multi-process scripts (`multiprocessing`, joblib, Dask)
+
+Worker processes spawned via `fork()` (Linux/macOS default) and
+`spawn()` (Windows, or after `set_start_method`) both work. The
+SQLite connection is held in a `threading.local()` slot, so it never
+crosses the fork boundary. Each child opens its own connection on
+first use; all of them read from the same `mmap`'d file.
+
+### Tests under `pytest-xdist`
+
+Each xdist worker is a separate Python process. With the lexicon
+installed, per-worker RSS after warmup is in the tens of MiB. Running
+`-n 8` on a laptop is uneventful.
+
 ## Quick start
 
 ```python

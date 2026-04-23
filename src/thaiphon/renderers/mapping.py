@@ -35,6 +35,18 @@ class SchemeMapping:
     word_coda_override: (
         Callable[[str, Syllable, str, str], str | None] | None
     ) = None
+    # Optional: per-key onset overlay used only when ``ctx.format == "html"``.
+    # Lookups fall back to ``onset_map`` for any IPA key not present here,
+    # so schemes only declare the entries that actually differ between
+    # text and HTML output (typically aspirated stops formatted with
+    # superscript markup).
+    onset_html_map: Mapping[str, str] | None = None
+    # Optional: alternate onset map used for the second slot of a true
+    # CC onset cluster. Lets schemes spell a phoneme differently when it
+    # appears as the post-consonantal glide in a cluster (e.g. /w/ in
+    # /kw/, /kʰw/ surfaces as the back vowel ``у`` in the Morev system).
+    # Falls back to ``onset_map`` per-key when an entry is absent.
+    cluster_second_slot_map: Mapping[str, str] | None = None
     cluster_joiner: str = ""
     syllable_separator: str = "-"
     empty_onset: str = ""
@@ -54,19 +66,36 @@ class MappingRenderer:
         syl: Syllable,
         word_raw: str = "",
         profile: str = "everyday",
+        fmt: str = "text",
     ) -> str:
         m = self._m
+        # Pick the active onset table. ``onset_html_map`` is consulted
+        # per-key when present and the caller asked for HTML output;
+        # any IPA key it does not list falls back to ``onset_map`` so
+        # schemes only declare the entries that actually differ between
+        # text and HTML.
+        html_overlay = m.onset_html_map if fmt == "html" else None
+
+        def _onset_lookup(symbol: str) -> str:
+            if html_overlay is not None and symbol in html_overlay:
+                return html_overlay[symbol]
+            return m.onset_map.get(symbol, m.unknown_fallback)
+
         # Onset.
         onset = syl.onset
         onset_str = ""
         if onset is None:
             onset_str = m.empty_onset
         elif isinstance(onset, Cluster):
-            a = m.onset_map.get(onset.first.symbol, m.unknown_fallback)
-            b = m.onset_map.get(onset.second.symbol, m.unknown_fallback)
+            a = _onset_lookup(onset.first.symbol)
+            second_map = m.cluster_second_slot_map
+            if second_map is not None and onset.second.symbol in second_map:
+                b = second_map[onset.second.symbol]
+            else:
+                b = _onset_lookup(onset.second.symbol)
             onset_str = a + m.cluster_joiner + b
         elif isinstance(onset, Phoneme):
-            onset_str = m.onset_map.get(onset.symbol, m.unknown_fallback)
+            onset_str = _onset_lookup(onset.symbol)
 
         # Vowel — check context-dependent map first when a coda is present.
         vowel_key = (syl.vowel.symbol, syl.vowel_length)
@@ -101,11 +130,16 @@ class MappingRenderer:
         return m.tone_format(base, syl)
 
     def render_word(self, word: PhonologicalWord, ctx: RenderContext) -> str:
-        # format/html/length knobs unused in baseline; profile threads
-        # through so scheme-specific overrides can gate on register.
+        # ``profile`` threads through so scheme-specific overrides can
+        # gate on register; ``ctx.format`` selects an optional onset
+        # overlay for HTML output (text mode is the default and needs
+        # no overlay).
         profile = ctx.profile
+        fmt = ctx.format
         return self._m.syllable_separator.join(
-            self.render_syllable(s, word_raw=word.raw, profile=profile)
+            self.render_syllable(
+                s, word_raw=word.raw, profile=profile, fmt=fmt
+            )
             for s in word.syllables
         )
 

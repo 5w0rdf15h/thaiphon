@@ -1,15 +1,28 @@
 """Tests for the Morev (Cyrillic) renderer.
 
-Conventions verified:
-- Aspirated stops use the IPA modifier letter small H (U+02B0) appended
-  to the Cyrillic letter: /kʰ/ → кʰ, /tʰ/ → тʰ, /pʰ/ → пʰ, /tɕʰ/ → чʰ.
-- /h/ → х (no collision with aspirated stops).
-- /ŋ/ → ң (U+04A3).
-- Long vowels carry a combining macron (U+0304); NFC collapses
-  и + macron to ӣ, etc.
-- Tone diacritics: LOW ̀ (U+0300), FALLING ̂ (U+0302),
-  HIGH ́ (U+0301), RISING ̌ (U+030C); MID is unmarked.
-- Syllable separator is '-'.
+Surface conventions verified:
+
+- Aspirated stops are spelled as digraphs: /kʰ/ → ``кх``, /tʰ/ → ``тх``,
+  /pʰ/ → ``пх``. The aspirated palatal /tɕʰ/ stays as bare ``ч`` —
+  the alphabet table lists ฉ / ช / ฌ as ``ч`` with no aspiration mark.
+- Unaspirated palatal /tɕ/ → ``ть``.
+- /h/ → ``х``; /ŋ/ → ``нг`` in both onset and coda.
+- Long vowels carry a combining macron (U+0304); centring diphthongs
+  put the macron on the first vocalic element only.
+- Open back-rounded /ɔ/ collapses to Cyrillic ``о`` (U+043E),
+  matching the dictionary's default rendering for both /oː/ and /ɔː/;
+  mid-central /ɤ/ uses schwa ``ə`` (U+0259).
+- Tones are spacing modifiers placed at the end of the syllable, after
+  the coda: LOW ``ˆ``, FALLING `````, HIGH ``ˇ``, RISING ``´``;
+  MID is unmarked. The engine's tone names follow modern-phonology
+  convention; HIGH = high pitch, RISING = low-to-high contour.
+- HTML output raises the ``х`` of the three plain aspirated stops:
+  ``к<sup>х</sup>``, ``т<sup>х</sup>``, ``п<sup>х</sup>``. The
+  aspirated palatal ``ч`` is never decorated.
+- ``ว`` in the second slot of a CC onset cluster surfaces as the back
+  vowel ``у`` (``กวาง`` → ``куа̄нг``).
+- Foreign-only codas collapse: /f/ → ``п``, /s/ → ``т``, /l/ → ``н``.
+- Syllable separator is ``-``.
 """
 
 from __future__ import annotations
@@ -20,12 +33,18 @@ import pytest
 
 import thaiphon
 
+# Spacing tone modifiers used by the Morev renderer.
+_TONE_LOW = "ˆ"
+_TONE_FALLING = "`"
+_TONE_HIGH = "ˇ"
+_TONE_RISING = "´"
+_TONE_CHARS = (_TONE_LOW, _TONE_FALLING, _TONE_HIGH, _TONE_RISING)
+
 _MACRON = "̄"
-_TONE_LOW = "̀"
-_TONE_FALLING = "̂"
-_TONE_HIGH = "́"
-_TONE_RISING = "̌"
-_NG = "ң"    # ң
+
+
+def _nfc(s: str) -> str:
+    return unicodedata.normalize("NFC", s)
 
 
 # ---------------------------------------------------------------------------
@@ -38,140 +57,177 @@ def test_morev_registered() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Helper — compare NFC-normalised forms
-# ---------------------------------------------------------------------------
-
-
-def _nfc(s: str) -> str:
-    return unicodedata.normalize("NFC", s)
-
-
-# ---------------------------------------------------------------------------
-# Onset consonants
+# Onset consonants — bare letters from the alphabet table
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    "thai, onset_cyrillic",
+    "thai, onset_prefix",
     [
-        ("กา", "к"),     # /k/ → к
-        ("ขา", "кʰ"),    # /kʰ/ → кʰ
-        ("ตา", "т"),     # /t/ → т
-        ("ถา", "тʰ"),    # /tʰ/ → тʰ
-        ("ปา", "п"),     # /p/ → п
-        ("ผา", "пʰ"),    # /pʰ/ → пʰ
-        ("หา", "х"),     # /h/ → х (not aspirated stop)
-        ("งา", _NG),     # /ŋ/ → ң
-        ("มา", "м"),     # /m/ → м
-        ("นา", "н"),     # /n/ → н
-        ("ลา", "л"),     # /l/ → л
-        ("วา", "в"),     # /w/ → в
-        ("ยา", "й"),     # /j/ → й
-        ("รา", "р"),     # /r/ → р
-        ("ซา", "с"),     # /s/ → с
-        ("บา", "б"),     # /b/ → б
-        ("ดา", "д"),     # /d/ → д
-        ("ฟา", "ф"),     # /f/ → ф
+        ("กา", "к"),       # /k/
+        ("ขา", "кх"),      # /kʰ/ digraph in text mode
+        ("ตา", "т"),       # /t/
+        ("ถา", "тх"),      # /tʰ/ digraph
+        ("ปา", "п"),       # /p/
+        ("ผา", "пх"),      # /pʰ/ digraph
+        ("จา", "ть"),      # /tɕ/ digraph
+        ("ฉา", "ч"),       # /tɕʰ/ bare ч (no aspiration mark)
+        ("ชา", "ч"),       # /tɕʰ/ bare ч
+        ("หา", "х"),       # /h/
+        ("งา", "нг"),      # /ŋ/ digraph
+        ("มา", "м"),
+        ("นา", "н"),
+        ("ลา", "л"),
+        ("วา", "в"),       # /w/ as bare initial
+        ("ยา", "й"),
+        ("รา", "р"),
+        ("ซา", "с"),
+        ("บา", "б"),
+        ("ดา", "д"),
+        ("ฟา", "ф"),
     ],
 )
-def test_morev_onset_consonants(thai: str, onset_cyrillic: str) -> None:
+def test_morev_onset_consonants(thai: str, onset_prefix: str) -> None:
     result = _nfc(thaiphon.transcribe(thai, scheme="morev"))
-    assert result.startswith(onset_cyrillic)
+    assert result.startswith(onset_prefix), result
 
 
 # ---------------------------------------------------------------------------
-# Tones: all five on mid-class long /aː/ → а̄
+# Tone modifiers — spacing letters at the end of the syllable
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    "thai, expected_has_diacritic",
+    "thai, expected",
     [
-        # MID — no diacritic.
-        ("กา", False),
-        # LOW — grave ̀.
-        ("ก่า", True),
-        # FALLING — circumflex ̂.
-        ("ก้า", True),
-        # HIGH — acute ́.
-        ("ก๊า", True),
-        # RISING — caron ̌.
-        ("ก๋า", True),
+        # All five tones on mid-class long /aː/.
+        ("กา", "ка̄"),         # MID — no modifier
+        ("ก่า", "ка̄ˆ"),        # LOW — ˆ at end
+        ("ก้า", "ка̄`"),        # FALLING — ` at end
+        ("ก๊า", "ка̄ˇ"),        # HIGH — ˇ at end
+        ("ก๋า", "ка̄´"),        # RISING — ´ at end
     ],
 )
-def test_morev_tone_diacritics_present(thai: str, expected_has_diacritic: bool) -> None:
-    result = thaiphon.transcribe(thai, scheme="morev")
-    has_combining = any(unicodedata.combining(ch) > 0 for ch in result)
-    # Macron on long vowel also counts as combining; check for tone-specific
-    # diacritics specifically.
-    tone_diacritics = (_TONE_LOW, _TONE_FALLING, _TONE_HIGH, _TONE_RISING)
-    has_tone = any(d in result for d in tone_diacritics)
-    assert has_tone == expected_has_diacritic
+def test_morev_tone_suffix_position(thai: str, expected: str) -> None:
+    result = _nfc(thaiphon.transcribe(thai, scheme="morev"))
+    assert result == _nfc(expected)
 
 
-# ---------------------------------------------------------------------------
-# Long vowels carry macron
-# ---------------------------------------------------------------------------
-
-
-def test_morev_long_vowel_has_macron() -> None:
-    result = thaiphon.transcribe("กา", scheme="morev")
-    # NFC may precompose; verify either raw macron or precomposed form present.
-    assert _MACRON in result or any(
-        unicodedata.name(ch, "").endswith("WITH MACRON") for ch in result
+def test_morev_tone_modifier_follows_coda() -> None:
+    # ``เด็ก`` is a closed dead syllable with LOW tone; the modifier
+    # must sit after the coda ``к``, not on the vowel.
+    result = thaiphon.transcribe("เด็ก", scheme="morev")
+    assert result.endswith("к" + _TONE_LOW)
+    # No combining tone diacritic should appear on the vowel.
+    assert not any(
+        unicodedata.combining(ch) > 0 and ch != _MACRON for ch in result
     )
 
 
-def test_morev_short_vowel_no_macron() -> None:
-    # จะ — dead short syllable, no length mark.
-    result = thaiphon.transcribe("จะ", scheme="morev")
-    assert _MACRON not in result
+def test_morev_mid_tone_has_no_modifier() -> None:
+    result = thaiphon.transcribe("กา", scheme="morev")
+    assert not any(c in result for c in _TONE_CHARS)
 
 
 # ---------------------------------------------------------------------------
-# Specific spot-checks
+# Vowel surface forms
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    "thai, expected_nfc",
+    "thai, expected",
     [
-        # กา — MID: кā (NFC precomposes а+macron).
-        ("กา", _nfc("ка̄")),
-        # ก่า — LOW: кā + grave → кā̀
-        ("ก่า", _nfc("ка̄̀")),
-        # ก้า — FALLING: кā + circumflex
-        ("ก้า", _nfc("ка̄̂")),
-        # ก๊า — HIGH: кā + acute
-        ("ก๊า", _nfc("ка̄́")),
-        # ก๋า — RISING: кā + caron
-        ("ก๋า", _nfc("ка̄̌")),
-        # ขา — HC: aspirated /kʰ/, RISING.
-        ("ขา", _nfc("кʰа̄̌")),
-        # หา — /h/ → х, RISING.
-        ("หา", _nfc("ха̄̌")),
-        # น้ำ — HIGH tone (LC + mai tho + lexicon → FALLING becomes HIGH).
-        ("น้ำ", _nfc("на̄́м")),
+        ("ขอ", "кхо̄´"),         # /ɔ/ collapses to Cyrillic о
+        ("เธอ", "тхə̄"),          # /ɤ/ uses schwa
+        ("เลือก", "лы̄ак`"),      # ɯə LONG: macron on first element
+        ("เกวียน", "куӣан"),      # iə LONG inside a /kw/ cluster
+        ("รวย", "рӯай"),          # uə LONG with /j/ coda
+        ("เรือ", "ры̄а"),         # ɯə open syllable
+        ("ดี", "дӣ"),             # i LONG
+        ("รู", "рӯ"),             # u LONG
     ],
 )
-def test_morev_spot_checks(thai: str, expected_nfc: str) -> None:
+def test_morev_vowels(thai: str, expected: str) -> None:
     result = _nfc(thaiphon.transcribe(thai, scheme="morev"))
-    assert result == expected_nfc
+    assert result == _nfc(expected)
+
+
+def test_morev_short_vowel_no_macron() -> None:
+    result = thaiphon.transcribe("จะ", scheme="morev")
+    assert _MACRON not in unicodedata.normalize("NFD", result)
 
 
 # ---------------------------------------------------------------------------
-# /ŋ/ as ң in onset and coda
+# /ŋ/ as нг in onset and coda
 # ---------------------------------------------------------------------------
-
-
-def test_morev_ng_coda() -> None:
-    result = thaiphon.transcribe("กาง", scheme="morev")
-    assert _NG in result
 
 
 def test_morev_ng_onset() -> None:
     result = thaiphon.transcribe("งาน", scheme="morev")
-    assert result.startswith(_NG)
+    assert result.startswith("нг")
+
+
+def test_morev_ng_coda() -> None:
+    result = thaiphon.transcribe("กาง", scheme="morev")
+    assert result.endswith("нг")
+
+
+# ---------------------------------------------------------------------------
+# Cluster /w/: ว as back vowel у in second slot
+# ---------------------------------------------------------------------------
+
+
+def test_morev_cluster_w_renders_as_u() -> None:
+    # ``กวาง`` is /kwaːŋ/; the second slot ``ว`` surfaces as ``у``.
+    assert thaiphon.transcribe("กวาง", scheme="morev") == _nfc("куа̄нг")
+
+
+# ---------------------------------------------------------------------------
+# Foreign-coda collapse: /f/ → п, /s/ → т, /l/ → н
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "thai, expected",
+    [
+        ("ปรู๊ฟ", "прӯпˇ"),       # /f/ coda → п, HIGH
+        ("กราฟ", "кра̄пˇ"),       # /f/ coda → п, HIGH
+        ("ก๊าซ", "ка̄тˇ"),         # /s/ coda → т, HIGH
+        ("โบนัส", "бо̄-натˇ"),    # /s/ coda → т, HIGH
+        ("ฟุตบอล", "футˇ-бо̄н"),  # /l/ coda → н (and /ɔ/ → о)
+        ("บอล", "бо̄н"),          # /l/ coda → н
+    ],
+)
+def test_morev_foreign_coda_collapse(thai: str, expected: str) -> None:
+    assert _nfc(thaiphon.transcribe(thai, scheme="morev")) == _nfc(expected)
+
+
+# ---------------------------------------------------------------------------
+# Spot-checks against alphabet-table example words
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "thai, expected",
+    [
+        ("ไก่", "кайˆ"),          # ก example
+        ("เต่า", "тауˆ"),         # ต example
+        ("เด็ก", "декˆ"),         # ด example
+        ("ฉิ่ง", "чингˆ"),        # ฉ example
+        ("หีบ", "хӣпˆ"),          # ห example
+        ("แหวน", "вэ̄н´"),        # ว example (after silent ห, HC unmarked → RISING)
+        ("น้ำ", "на̄мˇ"),         # /n/ + /aːm/ + HIGH
+        ("หา", "ха̄´"),           # /h/ RISING
+        ("ขา", "кха̄´"),          # /kʰ/ RISING
+        ("ค้า", "кха̄ˇ"),          # /kʰ/ HIGH
+        ("ผม", "пхом´"),         # /pʰ/ + /om/ RISING
+        ("ทหาร", "тхаˇ-ха̄н´"),   # leading ห-syllable + main
+        ("ขอ", "кхо̄´"),         # /ɔ/ → Cyrillic о, RISING
+        ("มา", "ма̄"),            # MID, no tone modifier
+    ],
+)
+def test_morev_alphabet_table_examples(thai: str, expected: str) -> None:
+    assert _nfc(thaiphon.transcribe(thai, scheme="morev")) == _nfc(expected)
 
 
 # ---------------------------------------------------------------------------
@@ -182,3 +238,91 @@ def test_morev_ng_onset() -> None:
 def test_morev_two_syllable_has_dash() -> None:
     result = thaiphon.transcribe("สวัสดี", scheme="morev")
     assert "-" in result
+
+
+# ---------------------------------------------------------------------------
+# HTML overlay: aspirated stops gain a superscript second element
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "thai, sup_digraph",
+    [
+        ("ขา", "к<sup>х</sup>"),
+        ("ค้า", "к<sup>х</sup>"),
+        ("ถา", "т<sup>х</sup>"),
+        ("ผา", "п<sup>х</sup>"),
+        ("ทหาร", "т<sup>х</sup>"),
+    ],
+)
+def test_morev_html_aspirated_overlay(thai: str, sup_digraph: str) -> None:
+    html = thaiphon.transcribe(thai, scheme="morev", format="html")
+    assert sup_digraph in html
+    text = thaiphon.transcribe(thai, scheme="morev", format="text")
+    # Plain ``х`` digraph in text mode, no superscript markup.
+    assert "<sup>" not in text
+    assert "х" in text
+
+
+def test_morev_html_palatal_aspirated_no_overlay() -> None:
+    # /tɕʰ/ stays as bare ``ч`` in both formats — the alphabet table
+    # never decorates ฉ / ช / ฌ.
+    text = thaiphon.transcribe("ฉา", scheme="morev", format="text")
+    html = thaiphon.transcribe("ฉา", scheme="morev", format="html")
+    assert text == html
+    assert "<sup>" not in html
+
+
+def test_morev_html_unaspirated_unchanged() -> None:
+    text = thaiphon.transcribe("กา", scheme="morev", format="text")
+    html = thaiphon.transcribe("กา", scheme="morev", format="html")
+    assert text == html
+
+
+# ---------------------------------------------------------------------------
+# IPA renderer: html and text outputs must match
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("thai", ["ขา", "เด็ก", "กวาง"])
+def test_ipa_html_equals_text(thai: str) -> None:
+    text = thaiphon.transcribe(thai, scheme="ipa", format="text")
+    html = thaiphon.transcribe(thai, scheme="ipa", format="html")
+    assert text == html
+
+
+# ---------------------------------------------------------------------------
+# Default format is "text" (regression guard)
+# ---------------------------------------------------------------------------
+
+
+def test_morev_default_format_is_text() -> None:
+    default = thaiphon.transcribe("ขา", scheme="morev")
+    text = thaiphon.transcribe("ขา", scheme="morev", format="text")
+    assert default == text
+    assert "<sup>" not in default
+
+
+# ---------------------------------------------------------------------------
+# /ɔ/ → Cyrillic о collapse: Latin open-O is never emitted by the renderer
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "thai",
+    [
+        "ขอ",       # engine /ɔ/ long
+        "กอ",       # engine /ɔ/ long
+        "บอก",      # engine /ɔ/ long with stop coda
+        "ปอน",      # engine /ɔ/ long with nasal coda
+        "ฟุตบอล",   # mixed: contains engine /ɔ/ + foreign /l/ coda collapse
+        "โต",       # engine /o/ long (control)
+        "โบนัส",    # engine /o/ long (control) + foreign /s/ coda collapse
+    ],
+)
+def test_morev_open_o_collapses_to_cyrillic(thai: str) -> None:
+    out = _nfc(thaiphon.transcribe(thai, scheme="morev"))
+    # Latin small open-O (U+0254) must never appear in Morev output.
+    assert "ɔ" not in out, out
+    # The Cyrillic letter о (U+043E) must be present.
+    assert "о" in out, out
