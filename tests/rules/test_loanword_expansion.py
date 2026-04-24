@@ -15,7 +15,6 @@ import thaiphon
 from thaiphon.lexicons.loanword import LOANWORDS, get_entry
 from thaiphon.lexicons.loanword_detector import score_foreignness
 
-
 # /f/-preserving English loans. Every word here must end orthographically
 # in ฟ or ฟ์ and must carry coda_policy="preserve".
 _NEW_F_PRESERVE: tuple[str, ...] = (

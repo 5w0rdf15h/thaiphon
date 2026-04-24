@@ -18,7 +18,6 @@ import pytest
 from thaiphon.errors import NormalizationError
 from thaiphon.normalization.unicode_norm import normalize
 
-
 # Convenience code-point constants for common Thai characters used in tests.
 _KO = "ก"          # ก
 _KHO = "ข"         # ข

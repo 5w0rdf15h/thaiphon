@@ -29,7 +29,6 @@ import pytest
 
 import thaiphon
 
-
 # A handful of words in these tests pin the lexicon-informed pronunciation
 # (e.g. ``เสื้อ`` as a single-syllable centring diphthong). Without the
 # optional ``thaiphon-data-volubilis`` data package installed the reader
@@ -312,7 +311,7 @@ def test_multi_syllable_words(
 def test_reference_phrase_paiboon_plus() -> None:
     words = ["คุณ", "เก็บ", "เสื้อ", "ไว้", "ไหน"]
     expected = ["kun", "gèp", "sʉ̂ʉa", "wái", "nǎi"]
-    for thai, exp in zip(words, expected):
+    for thai, exp in zip(words, expected, strict=True):
         assert _pp(thai) == _nfc(exp), (thai, _pp(thai), exp)
 
 
@@ -320,7 +319,7 @@ def test_reference_phrase_paiboon_plus() -> None:
 def test_reference_phrase_paiboon() -> None:
     words = ["คุณ", "เก็บ", "เสื้อ", "ไว้", "ไหน"]
     expected = ["kun", "gèp", "sʉ̂a", "wái", "nǎi"]
-    for thai, exp in zip(words, expected):
+    for thai, exp in zip(words, expected, strict=True):
         assert _p(thai) == _nfc(exp), (thai, _p(thai), exp)
 
 

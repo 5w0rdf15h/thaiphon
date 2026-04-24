@@ -13,7 +13,6 @@ import pytest
 
 from thaiphon.lexicons.thor import MID_WORD_THOR, THOR_READINGS, lookup, rewrite_thor_mid
 
-
 _S_READINGS = [
     "ทราบ",
     "ทราย",

@@ -17,7 +17,7 @@ tone. Every output scheme is then a small declarative `SchemeMapping`
 that renames those phonemes into a target surface form. Add a new
 scheme by writing data, not code.
 
-Six built-in renderers ship with the package:
+Eight built-in renderers ship with the package:
 
 - **`ipa`** — IPA with tone contour digits (the default phonological
   representation used for the Wiktionary benchmark).
@@ -25,9 +25,12 @@ Six built-in renderers ship with the package:
   tags (`{M}`, `{L}`, `{H}`, `{F}`, `{R}`). Supports `format="html"`,
   which emits the tone markers as `<sup>` tags instead of braces
   (`naam<sup>H</sup>`) to match the thai-language.com rendering.
-- **`morev`** — Cyrillic transliteration following the Russian-language
-  tradition. Aspirated stops as digraphs (`кх`, `тх`, `пх`) in text
-  mode and as `к<sup>х</sup>` etc in HTML mode.
+- **`rtgs`** — Royal Thai General System of Transcription (the 2002
+  Royal Institute specification). Plain ASCII Latin output with no
+  tone marks, no length distinction, and no diacritics — aspirated
+  stops as `ph`, `th`, `kh`, `ch`; six final consonants
+  (`k`, `t`, `p`, `n`, `m`, `ng`). The canonical "official" form
+  used on road signs, map names, and government publications.
 - **`rtl`** — Rak Thai Language School convention. IPA-style vowels
   (`ʉ ɛ ɔ ə`), aspirated-stop digraphs (`ph`, `th`, `kh`, `ch`), an
   explicit `ʼ` (U+02BC) for vowel-initial syllables, and a macron on
@@ -44,10 +47,22 @@ Six built-in renderers ship with the package:
   diphthongs double for length (short `ia ʉa ua`, long `iia ʉʉa uua`)
   and the triphthong-like combinations follow suit (`iiao`, `uuai`,
   `ʉʉai`).
+- **`morev`** — Cyrillic transliteration following the
+  Russian-academic dictionary-citation tradition. Aspirated stops as
+  digraphs (`кх`, `тх`, `пх`) in text mode and as `к<sup>х</sup>`
+  etc in HTML mode. Vowel length marked by a combining macron;
+  tone by a spacing diacritic at the end of the syllable.
+- **`lmt`** — learner-textbook Cyrillic in the
+  Lipilina-Muzychenko-Thapanosoth convention. Tones render as
+  Unicode superscript digits (`⁰` mid, `¹` low, `²` falling, `³`
+  high, `⁴` rising); vowel length is marked with an ASCII colon
+  (`ка:` for `/kaː/`); syllables inside a word are space-separated.
+  HTML mode wraps the tone digit in `<sup>…</sup>`. Complements
+  `morev` with a textbook-style layout rather than
+  dictionary-citation typography.
 
-Additional schemes (RTGS, your own pedagogical convention, …) are
-straightforward to register via `SchemeMapping` — see
-[Custom schemes](#custom-schemes).
+Custom schemes are straightforward to register via `SchemeMapping`
+— see [Custom schemes](#custom-schemes).
 
 ## Install
 
@@ -168,7 +183,7 @@ from thaiphon import (
 
 # Discover available schemes.
 list_schemes()
-# ('ipa', 'morev', 'paiboon', 'paiboon_plus', 'rtl', 'tlc')
+# ('ipa', 'lmt', 'morev', 'paiboon', 'paiboon_plus', 'rtgs', 'rtl', 'tlc')
 
 # IPA — the phonological representation.
 transcribe("ภูมิ", scheme="ipa")
@@ -180,6 +195,12 @@ transcribe("ลิฟต์", scheme="tlc")
 transcribe("ลิฟต์", scheme="tlc", format="html")
 # 'lif<sup>H</sup>'
 
+# RTGS — the 2002 Royal Institute "official" romanization.
+transcribe("กรุงเทพ", scheme="rtgs")
+# 'krungthep'
+transcribe("ลิฟต์", scheme="rtgs")
+# 'lip'  (strict native-coda collapse; no tone, no diacritics)
+
 # Paiboon / Paiboon+ — textbook romanizations.
 transcribe("เสื้อ", scheme="paiboon")
 # 'sʉ̂a'
@@ -189,6 +210,14 @@ transcribe("เสื้อ", scheme="paiboon_plus")
 # RTL School convention.
 transcribe("ภาษาไทย", scheme="rtl")
 # 'phāa sǎa thāy'
+
+# Morev — Russian-academic dictionary-citation Cyrillic.
+transcribe("สวัสดี", scheme="morev")
+# 'саˆ-ватˆ-дӣ'
+
+# LMT — learner-textbook Cyrillic with superscript-digit tones.
+transcribe("สวัสดี", scheme="lmt")
+# 'са¹ ват¹ ди:⁰'
 
 # Single-word shortcut that skips sentence tokenization.
 transcribe_word("สวัสดี", scheme="ipa")
@@ -314,7 +343,7 @@ transcribe("สวัสดี", scheme="ped")
 
 ## Architecture
 
-![The thaiphon pipeline — Thai text flows through normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer, fanning out to IPA, TLC, Morev, RTL, and Paiboon surface strings](https://raw.githubusercontent.com/5w0rdf15h/thaiphon/main/docs/pipeline.png)
+![The thaiphon pipeline — Thai text flows through normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer, fanning out to IPA, TLC, RTGS, RTL, Paiboon, Morev, and LMT surface strings](https://raw.githubusercontent.com/5w0rdf15h/thaiphon/main/docs/pipeline.png)
 
 Key design decisions:
 

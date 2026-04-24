@@ -19,7 +19,6 @@ import pytest
 import thaiphon
 from thaiphon.errors import UnsupportedSchemeError
 
-
 # ---------------------------------------------------------------------------
 # Scheme registration
 # ---------------------------------------------------------------------------

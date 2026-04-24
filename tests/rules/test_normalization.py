@@ -9,7 +9,6 @@ import pytest
 from thaiphon.errors import NormalizationError
 from thaiphon.normalization.unicode_norm import normalize
 
-
 SARA_AM = "ำ"
 NIKHAHIT = "ํ"
 SARA_AA = "า"

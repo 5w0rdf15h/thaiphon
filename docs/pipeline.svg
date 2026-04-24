@@ -3,7 +3,7 @@
      aria-labelledby="pipeline-title pipeline-desc"
      font-family="'Nunito Sans', 'Helvetica Neue', sans-serif">
   <title id="pipeline-title">The thaiphon pipeline</title>
-  <desc id="pipeline-desc">Thai text flows top to bottom through six stages — normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer — and emerges as a surface string in IPA, TLC, Morev, RTL, or Paiboon.</desc>
+  <desc id="pipeline-desc">Thai text flows top to bottom through six stages — normalisation, lexicon lookup, syllabification, rule-based derivation, the phonological word data contract, and the renderer — and emerges as a surface string in IPA, TLC, RTGS, Morev, RTL, Paiboon, Paiboon+, or LMT.</desc>
 
   <defs>
     <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
@@ -123,67 +123,103 @@
     </g>
   </g>
 
-  <!-- Fan-out connectors — three to row-1 chips (IPA/TLC/Morev), two
-       dropping straight through the gaps between them to row-2 chips
-       (RTL/Paiboon) at y=1070. -->
-  <path d="M 360 890 C 360 922, 200 932, 140 968" fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <path d="M 360 890 L 360 968" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <path d="M 360 890 C 360 922, 520 932, 580 968" fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <path d="M 250 890 L 250 1058" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <path d="M 470 890 L 470 1058" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <!-- Fan-out connectors — eight arrows from the renderer's bottom
+       centre (360, 890), four to each of the two output rows. Every
+       arrow clearly originates from the renderer, not from another
+       chip. The row-2 curves pass behind the row-1 chip rectangles,
+       which occlude their middle segments (SVG draw order: paths
+       render first, rects render on top). -->
+  <path d="M 360 890 C 360 918, 180 932, 96 968"   fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 360 890 C 360 914, 310 930, 272 968"  fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 360 890 C 360 914, 410 930, 448 968"  fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 360 890 C 360 918, 540 932, 624 968"  fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 360 890 C 280 960, 140 1060, 96 1108"  fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 360 890 C 340 960, 290 1060, 272 1108" fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 360 890 C 380 960, 430 1060, 448 1108" fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <path d="M 360 890 C 440 960, 580 1060, 624 1108" fill="none" stroke="#c49a3c" stroke-width="1.2" marker-end="url(#arrow)"/>
 
-  <!-- Output eyebrow — paper-colour stroke halo so the TLC centre
-       arrow reads cleanly through the text. -->
+  <!-- Output eyebrow — paper-colour stroke halo so the centre arrows
+       read cleanly through the text. -->
   <g transform="translate(360, 956)" text-anchor="middle">
     <text xml:space="preserve" font-size="9" letter-spacing="3" paint-order="stroke" stroke="#faf7f0" stroke-width="4" stroke-linejoin="round" fill="#5a4510" font-weight="700">S U R F A C E   S T R I N G</text>
   </g>
 
+  <!-- Row 1: IPA · TLC · RTGS · MOREV -->
+
   <!-- IPA output -->
-  <g transform="translate(40, 980)">
-    <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
-    <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">IPA</text>
-    <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
-    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768">pʰaː.sǎː.tʰaj</text>
+  <g transform="translate(16, 980)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">IPA</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768">pʰaː.sǎː.tʰaj</text>
   </g>
 
   <!-- TLC output (tones as superscript, matching thai-language.com) -->
-  <g transform="translate(260, 980)">
-    <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
-    <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">TLC</text>
-    <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
-    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768" xml:space="preserve"><tspan>paa saa</tspan><tspan dy="-5" font-size="10">R</tspan><tspan dy="5" font-size="14"> tai</tspan><tspan dy="-5" font-size="10">M</tspan></text>
+  <g transform="translate(192, 980)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">TLC</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768" xml:space="preserve"><tspan>paa saa</tspan><tspan dy="-5" font-size="9">R</tspan><tspan dy="5" font-size="13"> tai</tspan><tspan dy="-5" font-size="9">M</tspan></text>
+  </g>
+
+  <!-- RTGS output (Royal Thai General System, toneless plain ASCII) -->
+  <g transform="translate(368, 980)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">RTGS</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768">phasa thai</text>
   </g>
 
   <!-- Morev output (uses tspan superscript for aspirated stops) -->
-  <g transform="translate(480, 980)">
-    <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
-    <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">MOREV</text>
-    <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
-    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768" xml:space="preserve"><tspan>п</tspan><tspan dy="-5" font-size="10">х</tspan><tspan dy="5" font-size="14">а̄-са̄´-т</tspan><tspan dy="-5" font-size="10">х</tspan><tspan dy="5" font-size="14">ай</tspan></text>
+  <g transform="translate(544, 980)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">MOREV</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768" xml:space="preserve"><tspan>п</tspan><tspan dy="-5" font-size="9">х</tspan><tspan dy="5" font-size="13">а̄-са̄´-т</tspan><tspan dy="-5" font-size="9">х</tspan><tspan dy="5" font-size="13">ай</tspan></text>
   </g>
 
-  <!-- RTL output (Rak Thai Language School) — tone mark lands on the
-       first vowel letter of each syllable; mid tone = macron. -->
-  <g transform="translate(150, 1070)">
-    <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
-    <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">RTL</text>
-    <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
-    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768">phāa sǎa thāy</text>
+  <!-- Row 2: RTL · PAIBOON · PAIBOON+ · LMT -->
+
+  <!-- RTL output (Rak Thai Language School) — macron on mid-tone vowels,
+       háček on rising syllable, space as syllable separator. -->
+  <g transform="translate(16, 1120)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">RTL</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768">phāa sǎa thāy</text>
   </g>
 
   <!-- Paiboon output — mid tone unmarked, háček on the rising syllable. -->
-  <g transform="translate(370, 1070)">
-    <rect width="200" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
-    <text x="100" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">PAIBOON</text>
-    <line x1="86" y1="28" x2="114" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
-    <text x="100" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="14" fill="#2d2768">paa-sǎa-tai</text>
+  <g transform="translate(192, 1120)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">PAIBOON</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768">paa-sǎa-tai</text>
+  </g>
+
+  <!-- Paiboon+ output — same surface for this example (centring
+       diphthong doubling is what distinguishes the two schemes). -->
+  <g transform="translate(368, 1120)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">PAIBOON+</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768">paa-sǎa-tai</text>
+  </g>
+
+  <!-- LMT output — Lipilina-Muzychenko-Thapanosoth learner textbook
+       Cyrillic, Unicode superscript-digit tones, colon for length. -->
+  <g transform="translate(544, 1120)">
+    <rect width="160" height="74" rx="9" fill="#fffdf8" stroke="#e8e4dd" stroke-width="1"/>
+    <text x="80" y="22" text-anchor="middle" font-size="9" letter-spacing="2" fill="#8a6a1e" font-weight="700">LMT</text>
+    <line x1="66" y1="28" x2="94" y2="28" stroke="#c49a3c" stroke-width=".75" opacity=".4"/>
+    <text x="80" y="56" text-anchor="middle" font-family="'Fira Mono','Menlo',monospace" font-size="13" fill="#2d2768">пха:⁰ са:⁴ тхай⁰</text>
   </g>
 
   <!-- Footer ornament -->
-  <g transform="translate(360, 1200)" text-anchor="middle">
+  <g transform="translate(360, 1250)" text-anchor="middle">
     <line x1="-60" y1="0" x2="-10" y2="0" stroke="url(#goldRule)" stroke-width="1"/>
     <circle cx="0" cy="0" r="2" fill="#c49a3c"/>
     <line x1="10" y1="0" x2="60" y2="0" stroke="url(#goldRule)" stroke-width="1"/>
   </g>
-  <text x="360" y="1230" text-anchor="middle" font-size="11" fill="#9994ab" font-style="italic">One phonological word, many surface notations.</text>
+  <text x="360" y="1280" text-anchor="middle" font-size="11" fill="#9994ab" font-style="italic">One phonological word, many surface notations.</text>
 </svg>

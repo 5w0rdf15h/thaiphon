@@ -29,7 +29,6 @@ import pytest
 
 import thaiphon
 
-
 # Words whose canonical long-vowel pronunciation lives in the optional
 # ``thaiphon-data-volubilis`` data package are gated behind this marker;
 # without the lexicon the reader falls back to productive rules and gives

@@ -17,7 +17,6 @@ import pytest
 import thaiphon
 from thaiphon.lexicons.loanword import LOANWORDS, get_entry, get_preserved_coda
 
-
 # ---------------------------------------------------------------------------
 # Lexicon membership
 # ---------------------------------------------------------------------------

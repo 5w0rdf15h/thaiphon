@@ -11,7 +11,6 @@ import unicodedata
 
 import pytest
 
-import thaiphon
 from thaiphon.api import (
     analyze,
     analyze_word,
@@ -21,7 +20,6 @@ from thaiphon.api import (
     transcribe_word,
 )
 from thaiphon.errors import UnsupportedSchemeError
-
 
 # ---------------------------------------------------------------------------
 # list_schemes

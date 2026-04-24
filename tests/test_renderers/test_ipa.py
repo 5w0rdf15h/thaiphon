@@ -16,7 +16,6 @@ import pytest
 
 import thaiphon
 
-
 # Chao tone-letter constants.
 _MID = "˧"
 _LOW = "˨˩"

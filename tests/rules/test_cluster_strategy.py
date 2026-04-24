@@ -38,9 +38,13 @@ def test_cluster_merges_first_two_tokens(
     # Either ClusterStrategy has emitted something, or the TCC already
     # bundled both letters into the same token (not applicable).
     if not cands:
-        assert len(tokens) <= 1 or not tokens[0] + tokens[1][0] in ("กร", "กล")
+        assert len(tokens) <= 1 or tokens[0] + tokens[1][0] not in ("กร", "กล")
         return
-    assert any(expected_first_segment == seg[0] or seg[0].startswith(expected_first_segment[:2]) for seg in (c.segments for c in cands))
+    prefix = expected_first_segment[:2]
+    assert any(
+        seg[0] == expected_first_segment or seg[0].startswith(prefix)
+        for seg in (c.segments for c in cands)
+    )
 
 
 def test_cluster_score_is_high_when_applicable(

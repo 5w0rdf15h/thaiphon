@@ -33,9 +33,13 @@ Surface conventions:
   letters ``ʉ ɛ ɔ ə`` have no precomposed forms and keep the diacritic
   as a separate combining codepoint, which is the expected typesetting.
 - Codas: native codas map directly — ``m n ŋ w y p t k``. The three
-  foreign-only coda IPAs collapse to their native realisations
-  (``f`` → ``p``, ``s`` → ``t``, ``l`` → ``n``) to match the school's
-  treatment of loanwords.
+  foreign-only coda IPAs collapse to their native realisations by
+  default (``f`` → ``p``, ``s`` → ``t``, ``l`` → ``n``) to match the
+  school's treatment of loanwords. For lexicon-listed modern loans
+  that carry a preservation annotation for the active reading profile,
+  the default coda is swapped back to the foreign surface form
+  (e.g. ``ลิฟต์`` as ``líf`` rather than ``líp``). Preservation never
+  fires under the ``etalon_compat`` profile.
 - Cluster onsets: both elements emit separately with no joiner, yielding
   ``khr khl khw kr kl kw phr phl pr pl tr``.
 - Syllable separator: single space.
@@ -51,6 +55,7 @@ import unicodedata
 from thaiphon.model.enums import Tone, VowelLength
 from thaiphon.model.syllable import Syllable
 from thaiphon.registry import RENDERERS
+from thaiphon.renderers._loan_coda import make_lexicon_coda_override
 from thaiphon.renderers.mapping import MappingRenderer, SchemeMapping
 
 # Combining tone diacritics (placed on the first vowel letter).
@@ -145,8 +150,10 @@ _VOWEL_CONTEXT: dict[tuple[str, VowelLength, str], str] = {
 
 
 # Coda IPA → RTL letter. Native codas map directly; the three
-# foreign-only coda IPAs collapse to the nearest native segment,
-# matching the school's loanword treatment.
+# foreign-only coda IPAs collapse to the nearest native segment by
+# default, matching the school's loanword treatment. Lexicon-listed
+# modern loans may override the default back to the foreign surface
+# form via ``_PRESERVATION_CONFIG`` / ``_lexicon_coda_override`` below.
 _CODA_MAP: dict[str, str] = {
     "m": "m",
     "n": "n",
@@ -160,6 +167,29 @@ _CODA_MAP: dict[str, str] = {
     "w": "w",
     "j": "y",
 }
+
+
+# Per-preservation-tag configuration. Shape mirrors the TLC and Paiboon
+# tables; the RTL surface letters for the preserved forms happen to be
+# the same single characters ``f`` / ``s`` / ``l``. The orthographic
+# source-letter sets match exactly — native letters collapsing to the
+# same default coda are deliberately absent so the override never
+# misfires on them.
+_PRESERVATION_CONFIG: dict[str, tuple[str, frozenset[str], str]] = {
+    # ฟ → /p̚/ natively → RTL ``p``; preserve as ``f``.
+    "f": ("p", frozenset({"ฟ"}), "f"),
+    # ส / ศ / ษ → /t̚/ natively → RTL ``t``; preserve as ``s``.
+    "s": (
+        "t",
+        frozenset({"ส", "ศ", "ษ"}),
+        "s",
+    ),
+    # ล → /n/ natively → RTL ``n``; preserve as ``l``.
+    "l": ("n", frozenset({"ล"}), "l"),
+}
+
+
+_lexicon_coda_override = make_lexicon_coda_override(_PRESERVATION_CONFIG)
 
 
 def _tone_format(base: str, syl: Syllable) -> str:
@@ -189,6 +219,7 @@ RTL_MAPPING: SchemeMapping = SchemeMapping(
     vowel_map=_VOWEL_MAP,
     vowel_context_map=_VOWEL_CONTEXT,
     coda_map=_CODA_MAP,
+    word_coda_override=_lexicon_coda_override,
     tone_format=_tone_format,
     cluster_joiner="",
     syllable_separator=" ",

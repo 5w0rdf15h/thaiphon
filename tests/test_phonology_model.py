@@ -20,7 +20,6 @@ from thaiphon.model.phoneme import Cluster, Phoneme
 from thaiphon.model.syllable import Syllable
 from thaiphon.model.word import PhonologicalWord
 
-
 # ---------------------------------------------------------------------------
 # Phoneme
 # ---------------------------------------------------------------------------

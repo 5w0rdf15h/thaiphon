@@ -14,11 +14,8 @@ Covers tricky or historically bug-prone patterns:
 
 from __future__ import annotations
 
-import pytest
-
 import thaiphon
-from thaiphon.model.enums import Tone, VowelLength
-
+from thaiphon.model.enums import Tone
 
 # ---------------------------------------------------------------------------
 # Helpers

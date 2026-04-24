@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "thaiphon"
-version = "0.4.1"
+version = "0.5.0"
 description = "Thai phonology engine with pluggable transliteration systems."
 dynamic = ["readme"]
 requires-python = ">=3.10"

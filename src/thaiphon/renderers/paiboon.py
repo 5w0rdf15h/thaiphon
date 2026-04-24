@@ -39,8 +39,12 @@ Surface conventions (both schemes unless noted):
   * ``/ɯə/+j`` → Paiboon+ ``ʉʉai``, Paiboon ``ʉai``.
 
 - Final stops ``/p̚ t̚ k̚/`` → ``p t k``. Foreign-only coda IPAs collapse
-  to the nearest native realisation (``/f/`` → ``p``, ``/s/`` → ``t``,
-  ``/l/`` → ``n``).
+  to the nearest native realisation by default (``/f/`` → ``p``,
+  ``/s/`` → ``t``, ``/l/`` → ``n``). For lexicon-listed modern loans
+  that carry a preservation annotation for the active reading profile
+  (e.g. ``ลิฟต์`` as ``líf`` rather than ``líp``), the default coda is
+  swapped back to the foreign surface form. Preservation never fires
+  under the ``etalon_compat`` profile.
 - Tone is a combining diacritic on the first vowel letter: mid is
   unmarked; low → grave; falling → circumflex; high → acute; rising →
   háček. After NFC the plain Latin vowels precompose with the mark;
@@ -56,8 +60,8 @@ import unicodedata
 from thaiphon.model.enums import Tone, VowelLength
 from thaiphon.model.syllable import Syllable
 from thaiphon.registry import RENDERERS
+from thaiphon.renderers._loan_coda import make_lexicon_coda_override
 from thaiphon.renderers.mapping import MappingRenderer, SchemeMapping
-
 
 # Combining tone diacritics. Mid is unmarked — the empty string makes
 # the insertion in ``_tone_format`` a no-op.
@@ -191,6 +195,30 @@ _CODA_CONTEXT: dict[tuple[str, VowelLength, str], str] = {
 }
 
 
+# Per-preservation-tag configuration. The Paiboon schemes collapse the
+# three foreign-only codas to ``p`` / ``t`` / ``n`` by default; for
+# lexicon entries that ask for preservation the native-collapsed letter
+# is swapped back to the foreign surface form (``f`` / ``s`` / ``l``).
+# The orthographic-source-letter sets are identical to the TLC scheme's —
+# native letters collapsing to the same default coda are deliberately
+# absent so the override never misfires on them.
+_PRESERVATION_CONFIG: dict[str, tuple[str, frozenset[str], str]] = {
+    # ฟ → /p̚/ natively → Paiboon ``p``; preserve as ``f``.
+    "f": ("p", frozenset({"ฟ"}), "f"),
+    # ส / ศ / ษ → /t̚/ natively → Paiboon ``t``; preserve as ``s``.
+    "s": (
+        "t",
+        frozenset({"ส", "ศ", "ษ"}),
+        "s",
+    ),
+    # ล → /n/ natively → Paiboon ``n``; preserve as ``l``.
+    "l": ("n", frozenset({"ล"}), "l"),
+}
+
+
+_lexicon_coda_override = make_lexicon_coda_override(_PRESERVATION_CONFIG)
+
+
 def _tone_format(base: str, syl: Syllable) -> str:
     """Insert the tone-mark combining diacritic after the first vowel
     letter of the assembled syllable, then NFC-normalise. Mid tone
@@ -213,6 +241,7 @@ PAIBOON_MAPPING: SchemeMapping = SchemeMapping(
     vowel_context_map=_build_vowel_context(long_diphthong_is_doubled=False),
     coda_map=_CODA_MAP,
     coda_context_map=_CODA_CONTEXT,
+    word_coda_override=_lexicon_coda_override,
     tone_format=_tone_format,
     cluster_joiner="",
     syllable_separator="-",
@@ -228,6 +257,7 @@ PAIBOON_PLUS_MAPPING: SchemeMapping = SchemeMapping(
     vowel_context_map=_build_vowel_context(long_diphthong_is_doubled=True),
     coda_map=_CODA_MAP,
     coda_context_map=_CODA_CONTEXT,
+    word_coda_override=_lexicon_coda_override,
     tone_format=_tone_format,
     cluster_joiner="",
     syllable_separator="-",

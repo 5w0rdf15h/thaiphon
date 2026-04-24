@@ -6,6 +6,60 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0]
+
+### Added
+
+- **`rtgs` scheme** — Royal Thai General System of Transcription
+  (2002 specification). Plain ASCII Latin output with no tone
+  marks, no vowel length distinction, and no diacritics. Aspirated
+  stops as digraphs (`ph`, `th`, `kh`, `ch`); six final consonants
+  (`k`, `t`, `p`, `n`, `m`, `ng`); foreign codas collapsed to the
+  native inventory (ลิฟต์ renders `lip`, not `lif`). Intended as
+  the canonical "official" romanization for signage and
+  government-style output. Callers that want modern-loan `f`
+  preservation should pick `rtl`, `paiboon`, or `paiboon_plus`.
+
+- **`lmt` scheme** — Cyrillic transliteration following the
+  Lipilina-Muzychenko-Thapanosoth convention used in the MSU / ISAA
+  Thai learner textbook (И. Н. Липилина, Ю. Ф. Музыченко,
+  П. Тхапаносотх, *Учебник тайского языка: вводный курс*, Москва:
+  ИД ВКН, 2018, ISBN 978-5-907086-16-6). Tones render at the end of
+  each syllable as Unicode superscript digits in text mode (`⁰` mid,
+  `¹` low, `²` falling, `³` high, `⁴` rising) and as ordinary digits
+  wrapped in `<sup>…</sup>` in HTML mode. Vowel length is marked
+  with an ASCII colon on the nucleus (`ка:` for `/kaː/`); syllables
+  inside a word are space-separated. Vowel glyphs: Cyrillic `е` for
+  `/e/`, Cyrillic `э` for `/ɛ/`, Cyrillic `о` for `/o/`, Latin IPA
+  `ɔ` (U+0254) for `/ɔ/`, Latin schwa `ə` (U+0259) for `/ɤ/`. Like
+  `morev` and `rtgs`, LMT is a strict citation convention — foreign
+  coda `/f/` collapses to `п` regardless of reading profile.
+
+### Changed
+
+- `paiboon`, `paiboon_plus`, and `rtl` schemes now preserve final
+  `/f/` in modern loanwords by default, aligning them with the
+  `ipa` and `tlc` renderers that already consulted the same
+  lexicon. Entries tagged with `coda_policy="preserve"` in the
+  loanword lexicon (ลิฟต์, เชฟ, ยีราฟ, ไมโครซอฟต์, ออฟฟิศ, and ~90
+  others) now render with `f` instead of collapsing to native `p`
+  under the default `profile="everyday"`. Register-gated entries
+  (e.g. กราฟ, กอล์ฟ) preserve under `profile="careful_educated"`
+  only. Use `profile="etalon_compat"` to opt back in to strict
+  native-coda collapse (produces `líp` for ลิฟต์). `morev` is
+  unchanged — its dictionary convention intentionally collapses
+  foreign codas to the nearest native segment.
+
+### Notes for callers
+
+- The built-in scheme list grows from six to eight: `ipa`, `tlc`,
+  `morev`, `rtl`, `paiboon`, `paiboon_plus`, **`rtgs`**, **`lmt`**.
+- The default-output change for `paiboon`, `paiboon_plus`, and `rtl`
+  is a visible behaviour shift for existing callers. Callers that
+  depend on the previous collapse behaviour should pass
+  `profile="etalon_compat"` to `transcribe_word` / `transcribe` /
+  `transcribe_sentence`.
+
 ## [0.4.1]
 
 ### Fixed

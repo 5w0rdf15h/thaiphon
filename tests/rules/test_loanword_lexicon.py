@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 import thaiphon
@@ -13,7 +15,6 @@ from thaiphon.lexicons.loanword import (
     get_entry,
     words_by_coda_policy,
 )
-
 
 # ---------------------------------------------------------------------------
 # LoanProfile schema
@@ -40,7 +41,7 @@ def test_loan_profile_is_frozen() -> None:
         vowel_length_policy="spelling_driven",
         confidence="high",
     )
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         profile.source_language = "unknown"  # type: ignore[misc]
 
 
@@ -104,7 +105,7 @@ def test_get_entry_returns_none_for_non_loan() -> None:
 
 def test_loan_final_f_matches_preserve_slice() -> None:
     derived = words_by_coda_policy("preserve")
-    assert LOAN_FINAL_F_WORDS == derived
+    assert derived == LOAN_FINAL_F_WORDS
 
 
 def test_loan_final_f_still_contains_seed_entries() -> None:

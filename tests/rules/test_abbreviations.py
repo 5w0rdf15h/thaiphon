@@ -12,7 +12,6 @@ from thaiphon.normalization.expand import (
     spell_numerals,
 )
 
-
 MAI_YAMOK = "ๆ"
 PAIYANNOI = "ฯ"
 LAKKHANGYAO = "ฯลฯ"

@@ -69,7 +69,12 @@ pytest.importorskip(
     ),
 )
 
-_FIXTURE = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "wiktionary_ipa_sample.jsonl"
+_FIXTURE = (
+    Path(__file__).resolve().parents[2]
+    / "tests"
+    / "fixtures"
+    / "wiktionary_ipa_sample.jsonl"
+)
 
 # Accuracy floor for the assertion.
 #
