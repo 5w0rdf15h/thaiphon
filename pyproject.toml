@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "thaiphon"
-version = "0.6.0"
+version = "0.6.1"
 description = "Thai phonology engine with pluggable transliteration systems."
 dynamic = ["readme"]
 requires-python = ">=3.10"
@@ -12,13 +12,41 @@ license = { file = "LICENSE" }
 authors = [{ name = "Boris Savinov" }]
 dependencies = []
 classifiers = [
+  "Development Status :: 4 - Beta",
   "License :: OSI Approved :: Apache Software License",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Education",
+  "Natural Language :: Thai",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Text Processing :: Linguistic",
+  "Typing :: Typed",
 ]
+keywords = [
+  "thai",
+  "phonology",
+  "transliteration",
+  "romanization",
+  "ipa",
+  "linguistics",
+  "nlp",
+  "rtgs",
+  "paiboon",
+  "morev",
+  "lipilina",
+]
+
+[project.urls]
+Documentation = "https://rianthai.pro/docs/thaiphon/"
+Homepage = "https://github.com/5w0rdf15h/thaiphon"
+Repository = "https://github.com/5w0rdf15h/thaiphon"
+Changelog = "https://github.com/5w0rdf15h/thaiphon/blob/main/CHANGELOG.md"
+Issues = "https://github.com/5w0rdf15h/thaiphon/issues"
 
 [project.optional-dependencies]
 dev = [

@@ -6,6 +6,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.1]
+
+### Added
+
+- **`py.typed` marker.** The package now ships a PEP 561 marker so
+  downstream `mypy` and IDE type checkers trust the bundled type
+  annotations out of the box, without a "module lacks py.typed marker"
+  warning.
+
+### Changed
+
+- **PyPI package metadata.** Publishes Documentation, Homepage,
+  Repository, Changelog, and Issues URLs via `[project.urls]`, so the
+  left sidebar on [pypi.org/project/thaiphon](https://pypi.org/project/thaiphon/)
+  links out to the hosted docs site and the source repository.
+  Classifier list extended with `Development Status :: 4 - Beta`,
+  `Natural Language :: Thai`, `Topic :: Text Processing :: Linguistic`,
+  `Typing :: Typed`, and audience tags so PyPI search and topic
+  filters surface the project for linguistic / Thai-specific queries.
+  Keywords added (`thai`, `phonology`, `transliteration`, scheme names)
+  for the same reason.
+- **README.** Adds PyPI version, Python version, license, and docs
+  badges at the top so readers on PyPI or GitHub see status at a
+  glance.
+
 ## [0.6.0]
 
 ### Added

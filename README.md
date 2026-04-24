@@ -1,5 +1,10 @@
 # thaiphon
 
+[![PyPI](https://img.shields.io/pypi/v/thaiphon)](https://pypi.org/project/thaiphon/)
+[![Python](https://img.shields.io/pypi/pyversions/thaiphon)](https://pypi.org/project/thaiphon/)
+[![License](https://img.shields.io/pypi/l/thaiphon)](https://github.com/5w0rdf15h/thaiphon/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-rianthai.pro-blue)](https://rianthai.pro/docs/thaiphon/)
+
 A zero-dependency Thai phonological transliteration engine. 75 % exact-match
 accuracy against independent Wiktionary IPA ground truth when installed with
 the optional `thaiphon-data-volubilis` lexicon package; 57 % on the base
