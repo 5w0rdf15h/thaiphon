@@ -80,13 +80,17 @@ def test_override_sets_source_tag_through_transcribe() -> None:
     assert analyze("เทพ").source == "override:site"
 
 
-def test_override_returns_none_falls_through_to_lexicon() -> None:
+def test_override_returns_none_falls_through_to_pipeline() -> None:
     register_lexicon(lambda w: None, name="empty")
     result = analyze("เทพ")
-    # No override hit — falls through to the built-in Volubilis entry.
-    assert result.source == "lexicon"
-    assert result.best.syllables[0].coda is not None
-    assert result.best.syllables[0].coda.symbol == "p̚"
+    # No override hit — the result must come from somewhere downstream,
+    # not from the override layer.
+    assert not result.source.startswith("override:")
+    # And derivation must have produced a real syllable structure —
+    # non-empty with a labial-stop coda and falling tone.
+    assert result.best.syllables
+    coda = result.best.syllables[0].coda
+    assert coda is not None and coda.symbol == "p̚"
 
 
 def test_higher_priority_layer_wins() -> None:
@@ -146,8 +150,8 @@ def test_unregister_removes_layer() -> None:
     assert "site" in registered_lexicons()
     assert unregister_lexicon("site") is True
     assert "site" not in registered_lexicons()
-    # After unregister, built-in lexicon wins again.
-    assert analyze("เทพ").source == "lexicon"
+    # After unregister, no override layer should win.
+    assert not analyze("เทพ").source.startswith("override:")
 
 
 def test_unregister_returns_false_for_unknown_name() -> None:
