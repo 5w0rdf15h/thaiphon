@@ -31,6 +31,7 @@ from thaiphon.model.syllable import Syllable
 from thaiphon.model.word import PhonologicalWord
 from thaiphon.normalization import expand as expand_mod
 from thaiphon.normalization import unicode_norm
+from thaiphon import overrides as overrides_mod
 from thaiphon.syllabification.generator import CandidateGenerator
 from thaiphon.syllabification.ranker import CandidateRanker
 from thaiphon.tables import consonants as consonants_tbl
@@ -481,6 +482,24 @@ class PipelineRunner:
         if not text:
             empty = PhonologicalWord(syllables=(), raw="")
             return AnalysisResult(best=empty, raw="")
+
+        # User-supplied override lexicons: consulted before every built-in
+        # layer. First registered layer that returns a non-None word wins;
+        # the result short-circuits the rest of the pipeline and is tagged
+        # with ``source='override:<layer-name>'``.
+        override_hit = overrides_mod._lookup(text)
+        if override_hit is not None:
+            override_word, layer_name = override_hit
+            source_tag = f"override:{layer_name}"
+            tagged = _with_raw(
+                _dc_replace(override_word, source=source_tag),
+                text,
+            )
+            return AnalysisResult(
+                best=tagged,
+                raw=text,
+                source=source_tag,
+            )
 
         # Stage 4: full-form lexicon. Skipped when:
         # * single-character input (letter-name reading vs inherent-vowel is ambiguous)

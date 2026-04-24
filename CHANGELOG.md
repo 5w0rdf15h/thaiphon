@@ -6,6 +6,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0]
+
+### Added
+
+- **User-registered override lexicons.** New public API
+  `register_lexicon(lookup, *, name, priority=0)`, with companions
+  `unregister_lexicon` and `registered_lexicons`. The lookup is called
+  with the post-normalization Thai form and may return a
+  `PhonologicalWord` to short-circuit the pipeline (or `None` to defer
+  to the next layer). Override hits resolve before every built-in
+  lexicon and rule-based derivation, and are tagged
+  `source='override:<layer-name>'` on both the `AnalysisResult` and
+  the returned `PhonologicalWord` so callers can see which layer
+  answered. Higher priority resolves first; ties broken by
+  registration order. thaiphon ships no storage — consumers back
+  their lookup with whatever fits (dict, SQLite, HTTP, file).
+
+### Fixed
+
+- Pre-vowel CVC syllables (`เทพ`, `เกม`, `เบญ`, `แดง`) inside longer
+  compounds no longer absorb a following bare consonant as a
+  live-nasal coda. The coda-detection helper previously treated only
+  post-base vowels as "nucleus seen", so pre-vowel shapes appeared
+  coda-less even when their second consonant clearly closed the
+  syllable. Symptom: `กรุงเทพมหานคร` rendered the second syllable as
+  `/tʰeːm˧/` (live, mid tone, nasal coda) instead of `/tʰeːp̚˥˩/`
+  (dead, falling tone, stop coda). True onset clusters (`เปล`) and
+  silent-ร pseudo clusters (`ทราย`, `โศรก`) still keep their coda
+  slot open.
+
 ## [0.5.0]
 
 ### Added
