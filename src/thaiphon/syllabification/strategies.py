@@ -164,17 +164,25 @@ def _has_coda_already(seg: str) -> bool:
     vowels (เ แ โ ใ ไ) are positioned BEFORE the onset consonant and must
     not count as having "seen a vowel" for coda-detection purposes.
 
+    Pre-base-vowel segments also close their coda slot when a second
+    consonant follows the onset and the pair is NOT a native onset
+    cluster. ``เทพ``, ``เกม``, ``เบญ``, ``แดง`` are CVC syllables with the
+    second consonant serving as coda; ``เปล``, ``เกร``, ``เคล`` are still
+    coda-less because the pair forms a true onset cluster. Without this
+    check a following bare consonant would be wrongly folded onto the
+    already-complete syllable (``เทพ`` + ม → ``เทพม`` live-/m/-coda).
+
     Composite vowel frames require special handling: ย/อ/ว that are part
-    of the centring-diphthong nuclei (R-CD-002..004) must not be mistaken
-    for codas — otherwise trailing bare consonants cannot be folded in as
-    the actual coda.
+    of the centring-diphthong nuclei must not be mistaken for codas —
+    otherwise trailing bare consonants cannot be folded in as the actual
+    coda.
     """
     saw_vowel = False
-    saw_consonant = False
     pre_vowel_seen = False
+    last_consonant: str | None = None
     prev_ch = ""
     for ch in seg:
-        if ch in PRE_VOWELS and not saw_consonant:
+        if ch in PRE_VOWELS and last_consonant is None:
             # Pre-base vowel: belongs to vowel composition, not post-onset.
             pre_vowel_seen = True
             prev_ch = ch
@@ -190,7 +198,20 @@ def _has_coda_already(seg: str) -> bool:
                     prev_ch = ch
                     continue
                 return True
-            saw_consonant = True
+            if pre_vowel_seen and last_consonant is not None:
+                is_onset_cluster = (
+                    clusters_tbl.is_cluster(last_consonant, ch)
+                    and (last_consonant, ch) not in _RARE_CLUSTERS
+                )
+                # A following ร is systematically ambiguous in Thai: it may
+                # be the second of a true cluster (handled above), a silent
+                # leader (``ทร``, ``ศร``, ``ซร``, ``สร``), or a rare
+                # productive loan cluster. None of these are codas, so never
+                # close the coda slot when ``ch == ร`` — let the downstream
+                # reader disambiguate.
+                if not is_onset_cluster and ch != RO_RUA:
+                    return True
+            last_consonant = ch
         prev_ch = ch
     return False
 
