@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.2]
+
+### Fixed
+
+- **Closed CVC monosyllable with a tone mark on the onset.** A word of
+  the shape ``C1-toneMark-C2`` with no written vowel (e.g. ``ก้ง``,
+  ``ก่ง``, ``ก๊ง``, ``ก๋ง``) now parses as a single closed syllable with
+  inherent ``/o/`` and the tone derived from the onset's consonant class
+  plus the tone mark, instead of being split at the tone mark into two
+  spurious syllables with inserted ``/a/``. ``ก้ง`` now renders as
+  ``/koŋ˥˩/`` (tlc ``gohng{F}``) rather than ``/ka˥˩.ŋa˦˥/``. The
+  un-marked closure path (``กง``, ``กบ``, ``รถ``, ``นก``, …) and the
+  three-token cluster path with a tone mark on the second consonant
+  (``กล้ง``, ``คล้ม``) are unaffected.
+
 ## [0.6.1]
 
 ### Added

@@ -237,12 +237,22 @@ class MergeStrategy:
                 continue
             prev = segments[-1]
             prev_has_vowel = any(ch in VOWEL_CHARS for ch in prev)
-            prev_is_single_cons = (
-                len(prev) == 1 and prev in consonants_tbl.CONSONANTS
+            # An "onset-only" previous segment is a single consonant,
+            # optionally carrying a tone mark, with no written vowel and
+            # no coda yet. It must still be eligible to absorb a bare-C
+            # coda — otherwise a closed monosyllable whose onset bears a
+            # tone mark (e.g. ก้ง) would split into two syllables.
+            prev_is_onset_only = (
+                (len(prev) == 1 and prev in consonants_tbl.CONSONANTS)
+                or (
+                    len(prev) == 2
+                    and prev[0] in consonants_tbl.CONSONANTS
+                    and prev[1] in TONE_MARKS
+                )
             )
             if (
                 _is_bare_consonant_token(tok)
-                and (prev_has_vowel or prev_is_single_cons)
+                and (prev_has_vowel or prev_is_onset_only)
                 and not _has_coda_already(prev)
             ):
                 segments[-1] = prev + tok
