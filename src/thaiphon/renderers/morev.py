@@ -21,15 +21,14 @@ Surface conventions:
 - Long vowels carry a combining macron (U+0304) on the first vocalic
   element. Centring diphthongs spell the off-glide as bare ``а`` after
   the macron-bearing nucleus (``ӣа``, ``ы̄а``, ``ӯа``).
-- The source dictionary uses Cyrillic ``о̄``/``о`` as the default
-  rendering for both modern Thai /oː/ and /ɔː/ in long open syllables.
-  The Latin ``ɔ̄``/``ɔ`` glyphs from the introductory transcription key
-  appear only sporadically in the dictionary body, without a derivable
-  phonological pattern; the renderer therefore emits Cyrillic
-  ``о̄``/``о`` for both vowels and treats the Latin glyphs as out of
-  scope. Mid-central /ɤ/ uses the schwa ``ə`` (U+0259), which is
-  intentionally non-Cyrillic and reproduces the dictionary's
-  typesetting.
+- The two back rounded vowels are kept distinct, following the
+  transcription key in the source dictionary's front-matter, which
+  introduces two supplementary signs alongside the Cyrillic base
+  alphabet: ``ə`` (U+0259) for mid-central /ɤ/ and ``ɔ`` (U+0254,
+  Latin small letter open O) for the rounded u-shaped /ɔ/. Close
+  /oː/ /o/ render as Cyrillic ``о̄``/``о``; open /ɔː/ /ɔ/ render as
+  ``ɔ̄``/``ɔ``. This preserves the phonemic contrast in minimum pairs
+  such as โอน /oːn/ ↔ อ่อน /ɔ̀ːn/.
 - ``ว`` in the second slot of a true CC onset cluster (e.g. /kw/, /kʰw/)
   surfaces as the back vowel ``у``: ``กวาง`` → ``куа̄нг``. As a bare
   initial ``ว`` is ``в``; as a coda glide it is ``у``.
@@ -130,8 +129,8 @@ _VOWEL_MAP: dict[tuple[str, VowelLength], str] = {
     ("ɛ", VowelLength.LONG): "э" + _MACRON,
     ("o", VowelLength.SHORT): "о",
     ("o", VowelLength.LONG): "о" + _MACRON,
-    ("ɔ", VowelLength.SHORT): "о",            # Cyrillic о (collapsed from Latin ɔ)
-    ("ɔ", VowelLength.LONG): "о" + _MACRON,   # Cyrillic о̄ (collapsed from Latin ɔ̄)
+    ("ɔ", VowelLength.SHORT): "ɔ",            # ɔ (Latin small letter open O, U+0254)
+    ("ɔ", VowelLength.LONG): "ɔ" + _MACRON,   # ɔ̄
     ("ɯ", VowelLength.SHORT): "ы",
     ("ɯ", VowelLength.LONG): "ы" + _MACRON,
     ("ɤ", VowelLength.SHORT): "ə",            # ə

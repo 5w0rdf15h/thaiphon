@@ -26,6 +26,11 @@ class SchemeMapping:
     # schemes where the nucleus surface form shifts depending on the coda
     # (e.g. the tlc scheme renders /ɤ/ SHORT as ``eeu`` before /j/).
     vowel_context_map: Mapping[tuple[str, VowelLength, str], str] | None = None
+    # Optional: override (vowel, length) → vowel spelling used only when the
+    # syllable has NO coda. Lets a scheme spell an open syllable differently
+    # from the same nucleus closed by a coda (e.g. the tlc scheme spells open
+    # short /ɤ/ as ``uh`` in เลอะ but ``eer`` when a coda follows in เดิน).
+    vowel_open_map: Mapping[tuple[str, VowelLength], str] | None = None
     # Optional: word-level coda override. Called with (word_raw, syllable,
     # default_coda_str, profile) and may return a replacement string. Used
     # by schemes that render scheme-specific editorial conventions keyed
@@ -103,14 +108,20 @@ class MappingRenderer:
         elif isinstance(onset, Phoneme):
             onset_str = _onset_lookup(onset.symbol)
 
-        # Vowel — check context-dependent map first when a coda is present.
+        # Vowel — context-dependent map when a coda is present, open map when
+        # there is none; otherwise the plain nucleus spelling.
         vowel_key = (syl.vowel.symbol, syl.vowel_length)
         vowel_str = m.vowel_map.get(vowel_key, m.unknown_fallback)
-        if syl.coda is not None and m.vowel_context_map is not None:
-            vctx_key = (syl.vowel.symbol, syl.vowel_length, syl.coda.symbol)
-            override = m.vowel_context_map.get(vctx_key)
-            if override is not None:
-                vowel_str = override
+        if syl.coda is not None:
+            if m.vowel_context_map is not None:
+                vctx_key = (syl.vowel.symbol, syl.vowel_length, syl.coda.symbol)
+                override = m.vowel_context_map.get(vctx_key)
+                if override is not None:
+                    vowel_str = override
+        elif m.vowel_open_map is not None:
+            open_override = m.vowel_open_map.get(vowel_key)
+            if open_override is not None:
+                vowel_str = open_override
 
         # Coda (with optional context-dependent joint map: vowel+length+coda key).
         coda_str = ""

@@ -10,8 +10,10 @@ from thaiphon.syllabification.strategies import (
     ClusterStrategy,
     CompositeVowelFrameStrategy,
     DFStrategy,
+    FinalClusterCodaStrategy,
     HLeadingStrategy,
     IndicLearnedStrategy,
+    LeaderClosedStrategy,
     LinkingStrategy,
     MergeStrategy,
     OLeadingStrategy,
@@ -35,12 +37,20 @@ def default_strategies() -> tuple[Strategy, ...]:
         # ``กว้าง`` keep their /kʰw/ or /kw/ onset and are never routed to
         # the ``ัว`` /uːə/ centring-diphthong allomorph.
         ClusterStrategy(),
+        # A word-final C+ร cluster after a vowel is a coda (ร silent):
+        # บัตร → บัต, สมัคร → ส+มัค. Scored above ClusterStrategy so the
+        # coda reading wins over the onset-cluster reading word-finally.
+        FinalClusterCodaStrategy(),
         # Composite-vowel frame recognition sits below cluster detection for
         # the reason above, but above the generic merge/linking strategies
         # so a ย/ว/อ that belongs to a centring-diphthong nucleus cannot be
         # mis-assigned as a free coda or a split-out syllable (R-CD-001..005).
         CompositeVowelFrameStrategy(),
         AoCarrierStrategy(),
+        # อักษรนำ leader + closed syllable: C1 | C2C3 for three bare
+        # consonants (ถนน → ถ + นน). Above the generic merge/linking
+        # strategies so the leader boundary wins over coda-folding.
+        LeaderClosedStrategy(),
         # Productive Indic learned-reading. Fires only when the
         # detector flags the raw word as an Indic candidate not resolved by
         # any earlier lexicon. Sits above MergeStrategy so the non-folded

@@ -13,6 +13,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 
+from thaiphon.tables import consonants as consonants_tbl
+
 # word → tuple of phonemic-syllable respellings (Thai orthography that the
 # reader can derive cleanly; one tuple entry per final syllable).
 _ROR_ROR: dict[str, tuple[str, ...]] = {
@@ -88,4 +90,54 @@ def lookup(word: str) -> tuple[str, ...] | None:
     return _ROR_ROR.get(word)
 
 
-__all__ = ["ROR_ROR_WORDS", "lookup"]
+_RO_RUA = "ร"
+_RR = _RO_RUA + _RO_RUA           # รร (ร-หัน)
+_MAI_HAN_AKAT = "ั"          # ◌ั
+_NO_NU = "น"                 # น
+
+
+def rewrite_productive(text: str) -> str:
+    """Productive M-740 รร rewrite for words not in the starter lexicon.
+
+    Applies the two regular ร-หัน readings so arbitrary ``C + รร`` words
+    derive correctly without being individually lexicalised:
+
+    * ``C + รร + <single word-final consonant>`` → ``C + ◌ั + <consonant>``
+      — the consonant is the syllable coda: มรรค → มัค (mak), สรรพ → สับ
+      (sap), ธรรม → ธัม (tham).
+    * ``C + รร + <a following syllable>`` (or ``C + รร`` word-final) →
+      ``C + ◌ัน + <rest>`` — รร closes the syllable as /-an/: กรรชิด →
+      กันชิด (gan-chit), บรรจุ → บันจุ, สรร → สัน.
+
+    The irregular "linking-ra" reading (สรรเสริญ → สัน-ระ-เสิน, ภรรยา →
+    พัน-ระ-ยา) is not productive and stays in the lexicon; the pipeline
+    consults :func:`lookup` first and only falls back to this rewrite.
+
+    Returns ``text`` unchanged when it contains no ``รร``.
+    """
+    if _RR not in text:
+        return text
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if (
+            text[i : i + 2] == _RR
+            and out
+            and out[-1] in consonants_tbl.CONSONANTS
+        ):
+            rest = text[i + 2 :]
+            if len(rest) == 1 and rest in consonants_tbl.CONSONANTS:
+                # รร + lone final consonant → /a/ with that consonant coda.
+                out.append(_MAI_HAN_AKAT)
+            else:
+                # รร before a new syllable (or at word end) → /-an/.
+                out.append(_MAI_HAN_AKAT + _NO_NU)
+            i += 2
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
+__all__ = ["ROR_ROR_WORDS", "lookup", "rewrite_productive"]

@@ -9,9 +9,11 @@ Surface conventions verified:
 - /h/ → ``х``; /ŋ/ → ``нг`` in both onset and coda.
 - Long vowels carry a combining macron (U+0304); centring diphthongs
   put the macron on the first vocalic element only.
-- Open back-rounded /ɔ/ collapses to Cyrillic ``о`` (U+043E),
-  matching the dictionary's default rendering for both /oː/ and /ɔː/;
-  mid-central /ɤ/ uses schwa ``ə`` (U+0259).
+- The back rounded vowels are kept distinct: close /oː/ /o/ render as
+  Cyrillic ``о̄``/``о`` (U+043E); open /ɔː/ /ɔ/ render as the
+  supplementary sign ``ɔ̄``/``ɔ`` (Latin small letter open O, U+0254)
+  introduced in the dictionary's front-matter. Mid-central /ɤ/ uses
+  schwa ``ə`` (U+0259).
 - Tones are spacing modifiers placed at the end of the syllable, after
   the coda: LOW ``ˆ``, FALLING `````, HIGH ``ˇ``, RISING ``´``;
   MID is unmarked. The engine's tone names follow modern-phonology
@@ -137,7 +139,7 @@ def test_morev_mid_tone_has_no_modifier() -> None:
 @pytest.mark.parametrize(
     "thai, expected",
     [
-        ("ขอ", "кхо̄´"),         # /ɔ/ collapses to Cyrillic о
+        ("ขอ", "кхɔ̄´"),         # /ɔ/ → Latin open-O
         ("เธอ", "тхə̄"),          # /ɤ/ uses schwa
         ("เลือก", "лы̄ак`"),      # ɯə LONG: macron on first element
         ("เกวียน", "куӣан"),      # iə LONG inside a /kw/ cluster
@@ -194,8 +196,8 @@ def test_morev_cluster_w_renders_as_u() -> None:
         # Lexicon-dependent words (e.g. กราฟ) are not in this test set.
         ("ก๊าซ", "ка̄тˇ"),         # /s/ coda → т, HIGH
         ("โบนัส", "бо̄-натˇ"),    # /s/ coda → т, HIGH
-        ("ฟุตบอล", "футˇ-бо̄н"),  # /l/ coda → н (and /ɔ/ → о)
-        ("บอล", "бо̄н"),          # /l/ coda → н
+        ("ฟุตบอล", "футˇ-бɔ̄н"),  # /l/ coda → н (and /ɔ/ → ɔ)
+        ("บอล", "бɔ̄н"),          # /l/ coda → н
     ],
 )
 def test_morev_foreign_coda_collapse(thai: str, expected: str) -> None:
@@ -222,7 +224,7 @@ def test_morev_foreign_coda_collapse(thai: str, expected: str) -> None:
         ("ค้า", "кха̄ˇ"),          # /kʰ/ HIGH
         ("ผม", "пхом´"),         # /pʰ/ + /om/ RISING
         ("ทหาร", "тхаˇ-ха̄н´"),   # leading ห-syllable + main
-        ("ขอ", "кхо̄´"),         # /ɔ/ → Cyrillic о, RISING
+        ("ขอ", "кхɔ̄´"),         # /ɔ/ → Latin open-O, RISING
         ("มา", "ма̄"),            # MID, no tone modifier
     ],
 )
@@ -304,7 +306,7 @@ def test_morev_default_format_is_text() -> None:
 
 
 # ---------------------------------------------------------------------------
-# /ɔ/ → Cyrillic о collapse: Latin open-O is never emitted by the renderer
+# /oː/ vs /ɔː/ contrast: Cyrillic о̄ vs Latin open-O ɔ̄ are kept distinct
 # ---------------------------------------------------------------------------
 
 
@@ -316,13 +318,24 @@ def test_morev_default_format_is_text() -> None:
         "บอก",      # engine /ɔ/ long with stop coda
         "ปอน",      # engine /ɔ/ long with nasal coda
         "ฟุตบอล",   # mixed: contains engine /ɔ/ + foreign /l/ coda collapse
+    ],
+)
+def test_morev_open_o_uses_latin_open_o(thai: str) -> None:
+    out = _nfc(thaiphon.transcribe(thai, scheme="morev"))
+    # /ɔ/ is the supplementary sign ɔ (U+0254); Cyrillic о (U+043E) is
+    # reserved for close /o/ and must not appear.
+    assert "ɔ" in out, out
+    assert "о" not in out, out
+
+
+@pytest.mark.parametrize(
+    "thai",
+    [
         "โต",       # engine /o/ long (control)
         "โบนัส",    # engine /o/ long (control) + foreign /s/ coda collapse
     ],
 )
-def test_morev_open_o_collapses_to_cyrillic(thai: str) -> None:
+def test_morev_close_o_uses_cyrillic(thai: str) -> None:
     out = _nfc(thaiphon.transcribe(thai, scheme="morev"))
-    # Latin small open-O (U+0254) must never appear in Morev output.
-    assert "ɔ" not in out, out
-    # The Cyrillic letter о (U+043E) must be present.
     assert "о" in out, out
+    assert "ɔ" not in out, out

@@ -6,6 +6,67 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.3]
+
+### Fixed
+
+- **Open centring vowels were over-segmented.** Several open (coda-less)
+  vowel frames split into spurious extra syllables; they now parse as a
+  single syllable across every scheme:
+  - ``เ◌ือ`` carrying a tone mark — ``เสื้อ``, ``เนื้อ``, ``เชื่อ``,
+    ``เมื่อ``, ``เบื่อ`` — now one /ɯːa/ syllable (tlc ``seuua{F}`` and
+    so on) rather than three.
+  - ``เ◌อะ`` short /ɤ/ — ``เลอะ``, ``เถอะ``, ``เยอะ`` — now one syllable.
+  - ``เ◌ียว`` after a leading ``ห`` — ``เหลียว``, ``เหนียว``, ``เหมียว`` —
+    now one syllable (``liaao`` etc.).
+  - A preposed ``เ`` written before a leading consonant but belonging to a
+    ``เ◌ือ`` frame on the next consonant — ``เสมือน`` → ``sa-meuuan``
+    (leader ``ส`` plus the centring syllable), not three syllables.
+- **Three bare consonants now read as a leader plus a closed syllable.** A
+  ``C₁C₂C₃`` sequence with no written vowel — ``ถนน``, ``ขนม``, ``กมล`` —
+  parses as a leading consonant (``C₁`` with inherent /a/) plus a closed
+  ``C₂C₃`` syllable (``C₂`` onset, inherent /o/, ``C₃`` coda): ``ถนน`` →
+  ``tha-nohn``, not ``tha-na-na``.
+- **Word-final consonant clusters read as a coda.** A true cluster
+  ``C + ร`` ending a word after a vowel-bearing syllable is a coda — the
+  first consonant closes the syllable and ``ร`` is silent — rather than an
+  onset cluster: ``บัตร`` → ``bat``, ``สมัคร`` → ``sa-mak``, ``เนตร`` →
+  ``naeht``, ``วัตร`` → ``wat``. Words whose ``C`` has no preceding vowel
+  (e.g. ``นคร``) keep the cluster reading.
+- **``รร`` is now derived productively.** Any ``C + รร`` word is read by
+  rule rather than only the previously enumerated forms: ``C + รร`` plus a
+  single final consonant gives /a/ + that coda (``มรรค`` → ``mak``,
+  ``สรรพ`` → ``sap``); ``C + รร`` before another syllable gives /-an/
+  (``กรรชิด`` → ``gan-chit``, ``บรรจุ`` → ``ban-joo``).
+
+### Changed
+
+- **morev distinguishes /oː/ from /ɔː/.** /ɔː/ /ɔ/ now render as
+  ``ɔ̄``/``ɔ`` (Latin small letter open O, U+0254) — the supplementary
+  sign introduced in the source dictionary's transcription key
+  alongside ``ə`` for /ɤ/. Cyrillic ``о̄``/``о`` (U+043E) is now
+  reserved for close /oː/ /o/. The previous output collapsed both
+  phonemes onto Cyrillic ``о̄``, producing identical Morev strings for
+  minimum pairs such as ``โอน`` /oːn/ ↔ ``อ่อน`` /ɔ̀ːn/ and ``โต`` ↔
+  ``ตอ``. Examples of changed forms: ``ขอ`` → ``кхɔ̄´`` (was
+  ``кхо̄´``), ``บอก`` → ``бɔ̄кˆ`` (was ``бо̄кˆ``), ``อ่อน`` → ``ɔ̄нˆ``
+  (was ``о̄нˆ``), ``ฟุตบอล`` → ``футˇ-бɔ̄н`` (was ``футˇ-бо̄н``).
+- **tlc nucleus spellings for three open vowels**, matching the scheme's
+  established convention:
+  - ``/uːa/`` before a ``/j/`` offglide spells ``ua`` (not ``uaa``):
+    ``สวย`` → ``suay``, ``ด้วย`` → ``duay``, ``กล้วย`` → ``gluay``.
+  - Open short ``/ɤ/`` (``เ◌อะ``) spells ``uh``: ``เลอะ`` → ``luh`` — the
+    coda-bearing ``เ◌ิ`` form still spells ``eer`` (``เดิน`` → ``deern``).
+  - Open short ``/o/`` (``โ◌ะ``) spells ``o`` (not ``oh``): ``โต๊ะ`` →
+    ``dto`` — closed inherent /o/ still spells ``oh`` (``นก`` → ``nohk``).
+
+### Notes for callers
+
+- These are accuracy corrections: many words — especially those with open
+  centring vowels, leading-consonant (อักษรนำ) syllables, word-final
+  clusters, or ``รร`` — now produce different, more correct output.
+  Callers that snapshot transcriptions should re-baseline.
+
 ## [0.6.2]
 
 ### Fixed

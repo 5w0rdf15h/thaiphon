@@ -252,6 +252,22 @@ _VOWEL_CONTEXT: dict[tuple[str, VowelLength, str], str] = {
     # coda override ``o``, this yields ``iaao`` for words like เขียว,
     # เดียว, เรียว — matching the etalon's pedagogical TLC convention.
     ("i", VowelLength.LONG, "w"): "iaa",
+    # The open /uːə/ nucleus shortens to ``ua`` before a /j/ offglide:
+    # สวย → ``suay`` (not ``suaay``), ด้วย → ``duay``. With the matching
+    # coda override ``y`` this yields ``uay`` — the etalon convention,
+    # parallel to the ``iaa``/``iaao`` case above.
+    ("uə", VowelLength.LONG, "j"): "ua",
+}
+
+
+# Open-syllable (no coda) nucleus overrides. Short /ɤ/ with no coda is the
+# เ◌อะ frame, spelled ``uh`` (เลอะ → luh) — distinct from the coda-bearing
+# เ◌ิ spelling ``eer`` (เดิน → deern) in the base vowel map.
+_VOWEL_OPEN: dict[tuple[str, VowelLength], str] = {
+    ("ɤ", VowelLength.SHORT): "uh",
+    # Open short /o/ (โ◌ะ, no coda) spells ``o`` — โต๊ะ → dto. The
+    # coda-bearing inherent /o/ keeps the base ``oh`` (นก → nohk).
+    ("o", VowelLength.SHORT): "o",
 }
 
 
@@ -262,6 +278,7 @@ TLC_MAPPING: SchemeMapping = SchemeMapping(
     coda_map=_CODA_MAP,
     coda_context_map=_CODA_CONTEXT,
     vowel_context_map=_VOWEL_CONTEXT,
+    vowel_open_map=_VOWEL_OPEN,
     word_coda_override=_lexicon_coda_override,
     tone_format=_tone_format,
     tone_format_html=_tone_format_html,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace as _dc_replace
 from typing import Literal
 
+from thaiphon import overrides as overrides_mod
 from thaiphon.derivation import coda as coda_mod
 from thaiphon.derivation import onset as onset_mod
 from thaiphon.derivation import syllable_type as stype_mod
@@ -31,7 +32,6 @@ from thaiphon.model.syllable import Syllable
 from thaiphon.model.word import PhonologicalWord
 from thaiphon.normalization import expand as expand_mod
 from thaiphon.normalization import unicode_norm
-from thaiphon import overrides as overrides_mod
 from thaiphon.syllabification.generator import CandidateGenerator
 from thaiphon.syllabification.ranker import CandidateRanker
 from thaiphon.tables import consonants as consonants_tbl
@@ -629,6 +629,12 @@ class PipelineRunner:
                 return AnalysisResult(
                     best=rue_word, raw=text, source="lexicon"
                 )
+
+        # M-740 productive รร rewrite — fallback for non-lexicalised
+        # C+รร words (the starter lexicon, checked above, owns the
+        # irregular linking-ra forms). Rewrites the orthography to the
+        # equivalent ◌ั / ◌ัน spelling so the generic path derives it.
+        text = ror_ror_lex.rewrite_productive(text)
 
         tokens = tcc.tokenize(text)
         candidates = self._generator.generate(tokens)
