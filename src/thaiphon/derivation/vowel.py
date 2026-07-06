@@ -220,6 +220,13 @@ def resolve_vowel(
         # M-206: closed syllable with no written vowel → inherent short /o/.
         # Open syllable → inherent short /a/.
         if has_final:
+            # M-308: a final ร with no written vowel takes long /ɔː/
+            # (นคร → na-khaawn, พร → phaawn), not the generic inherent
+            # /o/ — the /n/ collapse comes from the coda resolver.
+            if final_char == RO_RUA:
+                return VowelAnalysis(
+                    "ɔ", VowelLength.LONG, inserted_vowel=True
+                )
             return VowelAnalysis("o", VowelLength.SHORT, inserted_vowel=True)
         return VowelAnalysis("a", VowelLength.SHORT, inserted_vowel=True)
 

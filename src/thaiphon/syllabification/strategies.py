@@ -10,6 +10,7 @@ from collections.abc import Iterator, Sequence
 from typing import Protocol, runtime_checkable
 
 from thaiphon.lexicons import cluster_overrides as cluster_overrides_lex
+from thaiphon.lexicons import df_stems as df_stems_lex
 from thaiphon.lexicons import indic_detector as indic_detector_lex
 from thaiphon.lexicons import o_leading as o_leading_lex
 from thaiphon.model.candidate import SyllabificationCandidate
@@ -17,6 +18,7 @@ from thaiphon.model.letters import (
     HO_HIP,
     HOP_PRE_VOWELS,
     MAI_HAN_AKAT,
+    MAITAIKHU,
     O_ANG,
     PRE_VOWELS,
     RO_RUA,
@@ -105,62 +107,7 @@ class AoCarrierStrategy:
     ) -> Iterator[SyllabificationCandidate]:
         if not tokens:
             return
-        n = len(tokens)
-        segments: list[str] = []
-        i = 0
-        changed = False
-        while i < n:
-            tok = tokens[i]
-            # Need: a prior-or-current token containing a consonant, then
-            # bare อ as its own token. This covers both bare-consonant
-            # carriers (พ่+อ) and pre-vowel fragments (เรื+อ).
-            #
-            # The open เ◌ือ frame carrying a tone mark (เสื้อ, เชื่อ) is
-            # tokenized with the mark stranded as its own token —
-            # ``เสื | ้ | อ`` — because no Thai Character Cluster pattern
-            # captures the bare frame plus a tone slot. Absorb that
-            # interleaved mark so the frame still re-glues into one /ɯːə/
-            # syllable, just as the mark-less ``เรื | อ`` does.
-            if (
-                i + 1 < n
-                and any(ch in consonants_tbl.CONSONANTS for ch in tok)
-            ):
-                k = i + 1
-                tone_piece = ""
-                if (
-                    len(tokens[k]) == 1
-                    and tokens[k] in TONE_MARKS
-                    and k + 1 < n
-                ):
-                    tone_piece = tokens[k]
-                    k += 1
-                carrier = tokens[k]
-                if carrier == O_ANG:
-                    merged = tok + tone_piece + O_ANG
-                    j = k + 1
-                    # Swallow an optional trailing bare-consonant coda.
-                    if (
-                        j < n
-                        and _is_bare_consonant_token(tokens[j])
-                        and len(tokens[j]) == 1
-                    ):
-                        merged = merged + tokens[j]
-                        j += 1
-                    segments.append(merged)
-                    i = j
-                    changed = True
-                    continue
-                # Short อะ carrier: the open /ɤ/ frame เ + C + อ + ะ
-                # (เลอะ, เถอะ, เปรอะ). TCC hands back ``อะ`` as its own
-                # token; re-glue it to the เC fragment. ะ closes the
-                # syllable, so no coda can follow.
-                if carrier == O_ANG + SARA_A and tok.startswith(SARA_E):
-                    segments.append(tok + tone_piece + carrier)
-                    i = k + 1
-                    changed = True
-                    continue
-            segments.append(tok)
-            i += 1
+        segments, changed = _glue_ao_carriers(tokens)
         if not changed:
             return
         # Post-pass: fold trailing bare consonants into preceding syllables.
@@ -215,11 +162,23 @@ class FinalClusterCodaStrategy:
     เนตร → เนต (naeht). The guard ``tokens[-3]`` must carry a vowel keeps
     นคร (น has no vowel; คร is a real /-ɔːn/ syllable) on the cluster path.
 
+    The silent-ร reading is further gated by the head consonant. For
+    ก/ข/ค/พ heads it applies only when the anchor ends in a dangling ั
+    that MUST take the head as its coda (จักร → jak, สมัคร → sa-mak);
+    with a complete anchor vowel the head starts a final /Cɔːn/ syllable
+    instead (M-308: นิกร → ni-gaawn, อากร, ประชากร) — the etalon corpus
+    splits exactly this way (silent กร/คร without ั: zero occurrences),
+    and the live TLC engine reads nonce ทิกร/ลัตร the same way. ต/ป/ท
+    heads keep the silent-ร reading regardless of the anchor (มิตร,
+    สูตร, บุตร — 159:1 for ตร; สมุทร for ทร).
+
     A few Sanskrit forms keep the cluster as a syllable (อัคร → ak-khra);
     those are rare, not derivable from spelling, and accepted as misses.
     """
 
     name = "final_cluster_coda"
+
+    _AWN_HEADS = frozenset({"ก", "ข", "ค", "พ"})
 
     def generate(
         self, tokens: Sequence[str]
@@ -236,6 +195,14 @@ class FinalClusterCodaStrategy:
         anchor = tokens[-3]
         if not any(ch in VOWEL_CHARS for ch in anchor):
             return
+        if head in self._AWN_HEADS:
+            anchor_core = "".join(
+                ch for ch in anchor if ch not in TONE_MARKS
+            )
+            if not anchor_core.endswith(MAI_HAN_AKAT):
+                # Complete anchor vowel → the /Cɔːn/ reading; leave the
+                # word to the cluster + M-308 path.
+                return
         segments = list(tokens[:-2])
         segments[-1] = segments[-1] + head  # fold first cluster C as coda
         # trailing ร dropped (silent). Scored above PreVowelHopStrategy and
@@ -265,7 +232,7 @@ def _is_vowel_frame_glide(
     return ch == WO_WAEN and prev == MAI_HAN_AKAT
 
 
-def _has_coda_already(seg: str) -> bool:
+def _has_coda_already(seg: str, *, karan_transparent: bool = False) -> bool:
     """A segment already has a coda if, after any pre-vowel + onset, there
     is an additional consonant following a *post-base* vowel mark. Pre-base
     vowels (เ แ โ ใ ไ) are positioned BEFORE the onset consonant and must
@@ -283,26 +250,66 @@ def _has_coda_already(seg: str) -> bool:
     of the centring-diphthong nuclei must not be mistaken for codas —
     otherwise trailing bare consonants cannot be folded in as the actual
     coda.
+
+    Three orthographic elements are transparent to frame structure and
+    must not disturb the walk:
+
+    * tone marks — เที่ยว carries ่ between ี and ย; the ย is still the
+      frame glide, so the mark cannot become the "previous character";
+    * การันต์-killed consonants (ล์ in กอล์ฟ, ร์ in ยอร์ก) — silent, so
+      they neither occupy the coda slot nor close it. This transparency
+      is opt-in (``karan_transparent``): it is only sound when deciding
+      whether the *word-final* token may fold in as a coda (กอล์ฟ,
+      นิวยอร์ก). Mid-word, a bare consonant after a killed tail is almost
+      always the onset of the next syllable (คาร์บอมบ์ = คาร์ + บอมบ์),
+      so the killed consonant must keep the slot closed there;
+    * post-base อ after an onset consonant with no other vowel — that อ
+      *is* the vowel (/ɔː/), so a consonant after it is a true coda
+      (นอน) while the อ itself never is (กอ, ยอร์).
     """
     saw_vowel = False
     pre_vowel_seen = False
     last_consonant: str | None = None
     prev_ch = ""
-    for ch in seg:
+    n = len(seg)
+    i = 0
+    while i < n:
+        ch = seg[i]
+        if ch in TONE_MARKS or ch == THANTHAKHAT:
+            i += 1
+            continue
         if ch in PRE_VOWELS and last_consonant is None:
             # Pre-base vowel: belongs to vowel composition, not post-onset.
             pre_vowel_seen = True
             prev_ch = ch
+            i += 1
             continue
         if ch in VOWEL_CHARS:
             saw_vowel = True
             prev_ch = ch
+            i += 1
             continue
         if ch in consonants_tbl.CONSONANTS:
+            # การันต์-killed consonant (possibly with an interleaved tone
+            # mark) is silent — skip it entirely when transparency is on.
+            if karan_transparent:
+                j = i + 1
+                while j < n and seg[j] in TONE_MARKS:
+                    j += 1
+                if j < n and seg[j] == THANTHAKHAT:
+                    i = j + 1
+                    continue
+            if ch == O_ANG and not saw_vowel and last_consonant is not None:
+                # Post-base อ acting as the /ɔː/ vowel.
+                saw_vowel = True
+                prev_ch = ch
+                i += 1
+                continue
             if saw_vowel:
                 if _is_vowel_frame_glide(prev_ch, ch, pre_vowel_seen):
                     # Glide consumed by the nucleus; coda slot still open.
                     prev_ch = ch
+                    i += 1
                     continue
                 return True
             if pre_vowel_seen and last_consonant is not None:
@@ -323,8 +330,147 @@ def _has_coda_already(seg: str) -> bool:
                 if not is_onset_cluster and not is_h_leading and ch != RO_RUA:
                     return True
             last_consonant = ch
+            prev_ch = ch
+            i += 1
+            continue
         prev_ch = ch
+        i += 1
     return False
+
+
+def _is_vowel_bearing(seg: str) -> bool:
+    """True when the segment already contains a vowel nucleus — either an
+    explicit vowel mark or the post-base อ carrier (/ɔː/) sitting after an
+    onset consonant (กอ, ยอร์, กอล์). A word-initial อ is an onset, not a
+    nucleus."""
+    if any(ch in VOWEL_CHARS for ch in seg):
+        return True
+    prev_is_consonant = False
+    for ch in seg:
+        if ch in TONE_MARKS or ch == THANTHAKHAT:
+            continue
+        if ch == O_ANG and prev_is_consonant:
+            return True
+        prev_is_consonant = ch in consonants_tbl.CONSONANTS
+    return False
+
+
+def _coda_steals_next_onset(coda: str, nxt: str | None) -> bool:
+    """A candidate coda consonant must stay unabsorbed when it forms an
+    onset unit (true cluster or ห + sonorant อักษรนำ pair) with the first
+    character of the following token — เหลอหลา is เหลอ + หลา, not เหลอห +
+    ลา; เกลอขวัญ keeps the ขว cluster. Only a token that itself BEGINS
+    with a consonant can claim the coda: one beginning with a pre-vowel
+    starts a fresh syllable on its own (วอกแวก: ก can never join แว's
+    onset because the แ is written first)."""
+    if not nxt or nxt[0] not in consonants_tbl.CONSONANTS:
+        return False
+    first = nxt[0]
+    return (
+        clusters_tbl.is_cluster(coda, first)
+        and (coda, first) not in _RARE_CLUSTERS
+    ) or (coda == HO_HIP and first in _H_LEADABLE)
+
+
+def _absorb_ao_frame(
+    tokens: Sequence[str], j: int, merged: str
+) -> tuple[str, int, bool]:
+    """After an onset merge, absorb a following post-base อ carrier and an
+    optional single-consonant coda: ``กล + อ + ง`` → ``กลอง``, ``หน่ + อ +
+    ย`` → ``หน่อย``. A tone mark stranded as its own token between onset
+    and carrier is absorbed too (mirroring AoCarrierStrategy).
+
+    The coda is NOT absorbed when it plausibly belongs to the *next*
+    syllable as onset material — see ``_coda_steals_next_onset`` (ห is
+    additionally never a Thai coda at all).
+
+    Returns ``(segment, next_index, absorbed)``.
+    """
+    n = len(tokens)
+    k = j
+    tone_piece = ""
+    if k < n and len(tokens[k]) == 1 and tokens[k] in TONE_MARKS:
+        tone_piece = tokens[k]
+        k += 1
+    if k < n and tokens[k] == O_ANG:
+        merged = merged + tone_piece + O_ANG
+        k += 1
+        if (
+            k < n
+            and _is_bare_consonant_token(tokens[k])
+            and len(tokens[k]) == 1
+            and tokens[k] not in (O_ANG, HO_HIP)
+            and not _coda_steals_next_onset(
+                tokens[k], tokens[k + 1] if k + 1 < n else None
+            )
+        ):
+            merged = merged + tokens[k]
+            k += 1
+        return merged, k, True
+    return merged, j, False
+
+
+def _glue_ao_carriers(tokens: Sequence[str]) -> tuple[list[str], bool]:
+    """Scan the token stream and re-glue every post-base อ carrier to its
+    onset: ``C + อ (+ coda)`` (พ่+อ, ร้+อ+น, ข+อ+ง), the เ◌ือ frame with a
+    stranded tone mark (``เสื | ้ | อ``), and the short เ◌อะ carrier
+    (เล + อะ). TCC hands back อ/อะ as their own tokens because no Thai
+    Character Cluster pattern captures these frames; syllabification must
+    reassemble them before onset/coda reasoning can work.
+
+    Shared by AoCarrierStrategy (whose candidate this scan used to be)
+    and ClusterStrategy (as a pre-pass, so cluster words containing an
+    อ frame elsewhere — คองเกรส, แถบคอเสื้อ — still get the frame glued
+    inside the cluster-bearing candidate).
+
+    Returns ``(segments, changed)``.
+    """
+    n = len(tokens)
+    segments: list[str] = []
+    i = 0
+    changed = False
+    while i < n:
+        tok = tokens[i]
+        if i + 1 < n and any(ch in consonants_tbl.CONSONANTS for ch in tok):
+            k = i + 1
+            tone_piece = ""
+            if (
+                len(tokens[k]) == 1
+                and tokens[k] in TONE_MARKS
+                and k + 1 < n
+            ):
+                tone_piece = tokens[k]
+                k += 1
+            carrier = tokens[k]
+            if carrier == O_ANG:
+                merged = tok + tone_piece + O_ANG
+                j = k + 1
+                # Swallow an optional trailing bare-consonant coda.
+                if (
+                    j < n
+                    and _is_bare_consonant_token(tokens[j])
+                    and len(tokens[j]) == 1
+                    and tokens[j] not in (O_ANG, HO_HIP)
+                    and not _coda_steals_next_onset(
+                        tokens[j], tokens[j + 1] if j + 1 < n else None
+                    )
+                ):
+                    merged = merged + tokens[j]
+                    j += 1
+                segments.append(merged)
+                i = j
+                changed = True
+                continue
+            # Short อะ carrier: the open /ɤ/ frame เ + C + อ + ะ
+            # (เลอะ, เถอะ, เปรอะ). ะ closes the syllable — no coda.
+            if carrier == O_ANG + SARA_A and tok.startswith(SARA_E):
+                segments.append(tok + tone_piece + carrier)
+                i = k + 1
+                changed = True
+                continue
+        segments.append(tok)
+        i += 1
+    return segments, changed
 
 
 class MergeStrategy:
@@ -342,12 +488,34 @@ class MergeStrategy:
         if not tokens:
             return
         segments: list[str] = []
-        for tok in tokens:
+        for idx, tok in enumerate(tokens):
             if not segments:
                 segments.append(tok)
                 continue
+            is_final = idx == len(tokens) - 1
             prev = segments[-1]
+            # Relaxed nucleus checks (post-base อ as vowel, การันต์-killed
+            # tails as transparent) let a bare consonant fold onto
+            # segments like ยอร์/กอล์/อาร์ (นิวยอร์ก, กอล์ฟ, อาร์กติก).
+            # They are gated: when the NEXT token is a vowel-less อ-initial
+            # chunk, this consonant is that frame's onset and must fold
+            # FORWARD instead (คาร์บอมบ์ = คาร์ + บ + อมบ์ → คาร์ + บอมบ์);
+            # when the next token is a bare consonant the two likely form
+            # an inherent-/o/ pair or linker (ชาร์ลสตัน = ชาร์ + ลส + ตัน).
+            # Only a single consonant can fold this way — a longer bare
+            # token is a whole syllable, not a coda (วอร์ + ซอว์).
+            nxt = tokens[idx + 1] if not is_final else None
+            unsafe_next = nxt is not None and (
+                (nxt[0] == O_ANG and not any(ch in VOWEL_CHARS for ch in nxt))
+                or (_is_bare_consonant_token(nxt) and len(nxt) == 1)
+            )
             prev_has_vowel = any(ch in VOWEL_CHARS for ch in prev)
+            relaxed_fold_ok = (
+                len(tok) == 1
+                and not unsafe_next
+                and (prev_has_vowel or _is_vowel_bearing(prev))
+                and not _has_coda_already(prev, karan_transparent=True)
+            )
             # An "onset-only" previous segment is a single consonant,
             # optionally carrying a tone mark, with no written vowel and
             # no coda yet. It must still be eligible to absorb a bare-C
@@ -361,10 +529,12 @@ class MergeStrategy:
                     and prev[1] in TONE_MARKS
                 )
             )
-            if (
-                _is_bare_consonant_token(tok)
-                and (prev_has_vowel or prev_is_onset_only)
-                and not _has_coda_already(prev)
+            if _is_bare_consonant_token(tok) and (
+                (
+                    (prev_has_vowel or prev_is_onset_only)
+                    and not _has_coda_already(prev)
+                )
+                or relaxed_fold_ok
             ):
                 segments[-1] = prev + tok
             else:
@@ -393,6 +563,11 @@ def _fold_trailing_finals(segments: list[str]) -> bool:
     (so ``[..., V, C, C]`` → ``[..., VCC]`` when the penultimate C can
     itself be a coda-onto-coda target).
 
+    The relaxed nucleus checks (post-base อ as vowel, การันต์-killed
+    tails as transparent) apply only when folding the *last* segment —
+    a word-final bare consonant has no other role than coda (กอล์ฟ,
+    นิวยอร์ก), whereas a mid-word one is usually the next onset.
+
     Returns True if any fold happened.
     """
     changed = False
@@ -400,11 +575,29 @@ def _fold_trailing_finals(segments: list[str]) -> bool:
     while i < len(segments):
         prev = segments[i - 1]
         tok = segments[i]
+        is_final = i == len(segments) - 1
+        prev_has_nucleus = (
+            _is_vowel_bearing(prev)
+            if is_final
+            else any(ch in VOWEL_CHARS for ch in prev)
+        )
+        # A word-final bare consonant may also pair with an onset-only
+        # (single consonant, optional tone mark) predecessor to close an
+        # inherent-/o/ syllable: ตรวจค้น's ค้ + น → ค้น. Word-final only —
+        # mid-word pairs are PairSyllableStrategy's scored decision.
+        prev_is_onset_only = is_final and (
+            (len(prev) == 1 and prev in consonants_tbl.CONSONANTS)
+            or (
+                len(prev) == 2
+                and prev[0] in consonants_tbl.CONSONANTS
+                and prev[1] in TONE_MARKS
+            )
+        )
         if (
             _is_bare_consonant_token(tok)
             and len(tok) == 1
-            and any(ch in VOWEL_CHARS for ch in prev)
-            and not _has_coda_already(prev)
+            and (prev_has_nucleus or prev_is_onset_only)
+            and not _has_coda_already(prev, karan_transparent=is_final)
         ):
             segments[i - 1] = prev + tok
             del segments[i]
@@ -437,6 +630,12 @@ class ClusterStrategy:
     ) -> Iterator[SyllabificationCandidate]:
         if not tokens or len(tokens) < 2:
             return
+        # Pre-pass: re-glue post-base อ carriers so a word containing BOTH
+        # a true cluster and an อ frame gets both in one candidate
+        # (คองเกรส → คอง + เกรส). Without this the cluster candidate wins
+        # the ranking while the อ frame stays shredded.
+        glued, _ = _glue_ao_carriers(tokens)
+        tokens = glued
         segments: list[str] = []
         i = 0
         changed = False
@@ -453,11 +652,22 @@ class ClusterStrategy:
             ):
                 merged = tok + tokens[i + 1]
                 j = i + 2
-                # Fold trailing bare consonant as coda.
+                # A following bare อ is the /ɔː/ carrier for this cluster
+                # onset (กลอง, ตรอก) — absorb it plus an optional coda.
+                merged, j, absorbed = _absorb_ao_frame(tokens, j, merged)
+                # Otherwise fold a trailing bare consonant as coda — but
+                # never onto a syllable that already owns one (ครอบ + ค)
+                # and never one that opens the next syllable (เกลอ + ขวัญ).
                 if (
-                    j < len(tokens)
+                    not absorbed
+                    and j < len(tokens)
                     and _is_bare_consonant_token(tokens[j])
                     and len(tokens[j]) == 1
+                    and not _has_coda_already(merged)
+                    and not _coda_steals_next_onset(
+                        tokens[j],
+                        tokens[j + 1] if j + 1 < len(tokens) else None,
+                    )
                 ):
                     merged = merged + tokens[j]
                     j += 1
@@ -477,10 +687,17 @@ class ClusterStrategy:
             ):
                 merged = tok + tokens[i + 1]
                 j = i + 2
+                merged, j, absorbed = _absorb_ao_frame(tokens, j, merged)
                 if (
-                    j < len(tokens)
+                    not absorbed
+                    and j < len(tokens)
                     and _is_bare_consonant_token(tokens[j])
                     and len(tokens[j]) == 1
+                    and not _has_coda_already(merged)
+                    and not _coda_steals_next_onset(
+                        tokens[j],
+                        tokens[j + 1] if j + 1 < len(tokens) else None,
+                    )
                 ):
                     merged = merged + tokens[j]
                     j += 1
@@ -517,11 +734,42 @@ class HLeadingStrategy:
 
     name = "h_leading"
 
+    @staticmethod
+    def _fold_stranded_codas(segments: list[str]) -> None:
+        """Fold bare-consonant segments into their preceding vowel-bearing
+        syllable so the ห-merge candidate doesn't strand codas elsewhere in
+        the word (จังหวัด: ['จั','ง','หวัด'] → ['จัง','หวัด']; หนองคาย:
+        ['หนอง','คา','ย'] → ['หนอง','คาย']).
+
+        One exception: mid-word ร stays put — its linking-/ra/ reading
+        wins there (สาธารณะ keeps สา-ธา-ระ-ณะ, not ธาร)."""
+        i = 1
+        while i < len(segments):
+            prev = segments[i - 1]
+            tok = segments[i]
+            is_final = i == len(segments) - 1
+            if (
+                _is_bare_consonant_token(tok)
+                and len(tok) == 1
+                and (is_final or tok != RO_RUA)
+                and any(ch in VOWEL_CHARS for ch in prev)
+                and not _has_coda_already(prev, karan_transparent=is_final)
+            ):
+                segments[i - 1] = prev + tok
+                del segments[i]
+                continue
+            i += 1
+
     def _fold_coda(
         self, tokens: Sequence[str], segments: list[str], i: int
     ) -> int:
-        """If the next token is a bare single consonant, append to the last
-        merged segment as coda and return the advanced index."""
+        """If the next token is the post-base อ carrier (หลอด, หน่อย),
+        absorb it plus an optional coda; otherwise, if it is a bare single
+        consonant, append it as the coda. Returns the advanced index."""
+        merged, j, absorbed = _absorb_ao_frame(tokens, i, segments[-1])
+        if absorbed:
+            segments[-1] = merged
+            return j
         if (
             i < len(tokens)
             and _is_bare_consonant_token(tokens[i])
@@ -569,6 +817,25 @@ class HLeadingStrategy:
             i += 1
         if not changed:
             return
+        self._fold_stranded_codas(segments)
+        # A run of exactly TWO word-initial bare consonants before a real
+        # syllable is a closed inherent-/o/ pair (นกหวีด → นก + หวีด). A
+        # longer run stays split — its first consonant is usually an
+        # อักษรนำ leader (ตลบหลัง keeps ต + ลบ + หลัง).
+        if (
+            len(segments) >= 3
+            and _is_bare_consonant_token(segments[0])
+            and len(segments[0]) == 1
+            and _is_bare_consonant_token(segments[1])
+            and len(segments[1]) == 1
+            and not (
+                _is_bare_consonant_token(segments[2])
+                and len(segments[2]) == 1
+            )
+            and not clusters_tbl.is_cluster(segments[0], segments[1])
+        ):
+            segments[0] = segments[0] + segments[1]
+            del segments[1]
         yield SyllabificationCandidate(
             segments=tuple(segments),
             strategy=self.name,
@@ -784,6 +1051,28 @@ class PairSyllableStrategy:
         if not tokens:
             return
         n = len(tokens)
+        # Exactly four bare consonants form two inherent-/o/ pairs:
+        # มงคล → มง + คล (mohng-khon). Skipped when the first two form a
+        # true cluster (พรหม stays on the cluster path). The second pair
+        # may itself be a cluster-shaped letter pair — word-finally with
+        # no vowel anywhere the closed-pair reading wins (คล = khon).
+        if (
+            n == 4
+            and all(
+                _is_bare_consonant_token(t) and len(t) == 1 for t in tokens
+            )
+            # A non-initial bare อ is the /ɔː/ vowel carrier, not pair
+            # material (ตลอด is ต + ลอด, not ตล + อด). Word-initial อ is
+            # a real onset (อดทน = อด + ทน).
+            and O_ANG not in tokens[1:]
+            and not clusters_tbl.is_cluster(tokens[0], tokens[1])
+            and not clusters_tbl.is_cluster(tokens[1], tokens[2])
+        ):
+            yield SyllabificationCandidate(
+                segments=(tokens[0] + tokens[1], tokens[2] + tokens[3]),
+                strategy=self.name,
+                score=0.86,
+            )
         segments: list[str] = []
         i = 0
         changed = False
@@ -867,6 +1156,11 @@ class PairSyllableStrategy:
         )
 
 
+# Consonants a pre-vowel may hop onto: the sonorants that take อักษรนำ
+# linking readings, plus ด (แสดง → sa-daaeng).
+_HOP_MIDDLES: frozenset[str] = frozenset("งญณนมยรลวด")
+
+
 class PreVowelHopStrategy:
     """M-521/M-522 Pali/Sanskrit pre-vowel hop: when a pre-vowel is
     orthographically glued to C1 but phonologically belongs to C2, C1 takes
@@ -909,6 +1203,25 @@ class PreVowelHopStrategy:
                 score=0.88,
             )
             return
+        # เสด็จ-type: the hopped syllable carries ◌็ on its onset
+        # (เ + ส + ด็ + จ → ส + เด็จ). The MAITAIKHU rides the token, so
+        # allow the 2-char shape ``C + ็`` for the middle token.
+        if (
+            len(tokens) == 3
+            and len(t1) == 2
+            and t1[0] in consonants_tbl.CONSONANTS
+            and t1[1] == MAITAIKHU
+            and t1[0] in _HOP_MIDDLES
+            and len(tokens[2]) == 1
+            and tokens[2] in consonants_tbl.CONSONANTS
+            and not clusters_tbl.is_cluster(c1, t1[0])
+        ):
+            yield SyllabificationCandidate(
+                segments=(c1, pre + t1 + tokens[2]),
+                strategy=self.name,
+                score=0.88,
+            )
+            return
         if len(t1) != 1 or t1 not in consonants_tbl.CONSONANTS:
             return
         c2 = t1
@@ -916,8 +1229,15 @@ class PreVowelHopStrategy:
             return
         # 3-token: [PRE+C1, C2, C3] → (C1, PRE+C2+C3). Skip when C2 is ร
         # (silent-ร merge is already the correct reading for that shape).
+        # In this shape the hopped-to onset is a sonorant (or ด, as in
+        # แสดง) in every attested hop reading; a non-sonorant C2 keeps
+        # the pre-vowel on C1 (โกสน = โก + สน, เบตง = เบ + ตง). The
+        # 4-token silent-ร shape below is NOT gated this way (เกษตร
+        # hops onto ษ).
         if len(tokens) == 3 and len(tokens[2]) == 1:
             if c2 == RO_RUA:
+                return
+            if c2 not in _HOP_MIDDLES:
                 return
             c3 = tokens[2]
             if c3 not in consonants_tbl.CONSONANTS:
@@ -999,6 +1319,42 @@ class CompositeVowelFrameStrategy:
         return 0
 
     @classmethod
+    def _template_3_extended_match(
+        cls, tokens: Sequence[str], i: int
+    ) -> tuple[str, ...] | None:
+        """The ◌ว◌ frame behind a two-consonant onset — two shapes over
+        four tokens ``[C1, C2, ว, C]``:
+
+        * ``C1 == ห`` leading a sonorant: one ห-led syllable — หลวง,
+          หมวก (ห + ล + ว + ง → ``หลวง``).
+        * ``(C1, C2)`` NOT a cluster: อักษรนำ leader split — สงวน,
+          ขบวน (ส + ง + ว + น → ``ส`` + ``งวน``); the leader keeps its
+          inherent /a/ and shifts the class of the next onset.
+
+        A true-cluster ``(C1, C2)`` pair is NOT handled here: the 3-token
+        template at ``i+1`` plus the cluster fold already assembles it
+        (ตรวจ, ครวญ). Returns the segments to append, or None.
+        """
+        if i + 3 >= len(tokens):
+            return None
+        c1, c2, mid, coda = (
+            tokens[i], tokens[i + 1], tokens[i + 2], tokens[i + 3]
+        )
+        if mid != WO_WAEN:
+            return None
+        if not (len(c1) == 1 and c1 in consonants_tbl.CONSONANTS):
+            return None
+        if not cls._is_onset_like(c2):
+            return None
+        if not (len(coda) == 1 and coda in consonants_tbl.CONSONANTS):
+            return None
+        if c1 == HO_HIP and c2[0] in _H_LEADABLE:
+            return (c1 + c2 + mid + coda,)
+        if c1 != HO_HIP and not clusters_tbl.is_cluster(c1, c2[0]):
+            return (c1, c2 + mid + coda)
+        return None
+
+    @classmethod
     def _template_12_match(cls, tokens: Sequence[str], i: int) -> int:
         """Match templates 1 and 2: ``[เCีย, C]`` or ``[เCือ, C]`` where the
         second token is a single bare consonant (the coda). Tone marks
@@ -1044,6 +1400,7 @@ class CompositeVowelFrameStrategy:
         segments: list[str] = []
         i = 0
         changed = False
+        leader_split = False
         while i < n:
             # Try template 1 / 2 first — they only consume 2 tokens.
             consumed = self._template_12_match(tokens, i)
@@ -1054,24 +1411,53 @@ class CompositeVowelFrameStrategy:
                 continue
             # Template 3: C + ว + C. Guard against true-cluster words
             # (ขว/คว/กว family) where the /kʰw/-/kw/ reading is the
-            # attested one.
+            # attested one. Lexicon lookups are scoped to the frame window
+            # so compounds resolve per-syllable (ควบคุม checks ``ควบ``);
+            # the whole-input form is kept for single-word entries.
             consumed = self._template_3_match(tokens, i)
-            if consumed and full not in cluster_overrides_lex.TRUE_CLUSTER_WORDS:
-                # Also skip when the (C, ว) pair is a true cluster and the
-                # cluster-specific lexicon doesn't mark this as insert-u —
-                # e.g. ``ขวาน``, ``กวาง``: those have a post-base vowel and
-                # never hit this 3-token shape anyway, but belt-and-braces.
-                onset_char = tokens[i]
-                if (
-                    clusters_tbl.is_cluster(onset_char, WO_WAEN)
-                    and full not in cluster_overrides_lex.INSERT_U_WORDS
-                ):
-                    # Let ClusterStrategy own this shape.
-                    segments.append(tokens[i])
-                    i += 1
+            if consumed:
+                window = tokens[i] + tokens[i + 1] + tokens[i + 2]
+                is_true_cluster = (
+                    full in cluster_overrides_lex.TRUE_CLUSTER_WORDS
+                    or window in cluster_overrides_lex.TRUE_CLUSTER_WORDS
+                )
+                if not is_true_cluster:
+                    onset_char = tokens[i]
+                    if clusters_tbl.is_cluster(onset_char, WO_WAEN):
+                        if (
+                            full not in cluster_overrides_lex.INSERT_U_WORDS
+                            and window
+                            not in cluster_overrides_lex.INSERT_U_WORDS
+                        ):
+                            # Let ClusterStrategy own this shape.
+                            segments.append(tokens[i])
+                            i += 1
+                            continue
+                        # INSERT_U reading of an ambiguous ขว/คว/กว window:
+                        # respell with ◌ั so derivation takes the ◌ัว
+                        # nucleus branch instead of the cluster (mirrors
+                        # the whole-word path in the pipeline runner).
+                        segments.append(
+                            tokens[i]
+                            + MAI_HAN_AKAT
+                            + tokens[i + 1]
+                            + tokens[i + 2]
+                        )
+                        i += consumed
+                        changed = True
+                        continue
+                    segments.append(window)
+                    i += consumed
+                    changed = True
                     continue
-                segments.append(tokens[i] + tokens[i + 1] + tokens[i + 2])
-                i += consumed
+            # Template 3 behind a two-consonant onset: ห-leading (หลวง)
+            # or อักษรนำ leader split (สงวน → ส + งวน).
+            ext = self._template_3_extended_match(tokens, i)
+            if ext is not None:
+                if len(ext) == 2:
+                    leader_split = True
+                segments.extend(ext)
+                i += 4
                 changed = True
                 continue
             segments.append(tokens[i])
@@ -1079,19 +1465,20 @@ class CompositeVowelFrameStrategy:
         if not changed:
             return
         # Apply the same cluster-folding pass used by ClusterStrategy so the
-        # frame-recognising candidate doesn't strand word-initial bare
-        # consonants that actually start a true CC onset. Example:
-        # ``['ก','ระ','เทีย','ม']`` → frame-fold gives
-        # ``['ก','ระ','เทียม']`` and the cluster pass turns it into
-        # ``['กระ','เทียม']`` — the correct two-syllable analysis.
-        _apply_initial_cluster(segments)
+        # frame-recognising candidate doesn't strand bare consonants that
+        # actually start a true CC onset — word-initially
+        # (``['ก','ระ','เทียม']`` → ``['กระ','เทียม']``) or before a
+        # mid-word frame (``['โอ','ด','ค','รวญ']`` → the ค joins รวญ).
+        _apply_clusters(segments)
         # Post-pass: any trailing bare consonant still hanging around gets
         # folded into the preceding vowel-bearing syllable as a coda.
         _fold_trailing_finals(segments)
         # If the result still contains a word-initial bare consonant that
         # couldn't be absorbed, skip — other strategies produce a cleaner
-        # analysis and we don't want our higher score to mask theirs.
-        if _has_leading_bare_consonant(segments):
+        # analysis and we don't want our higher score to mask theirs. An
+        # อักษรนำ leader split is the exception: its word-initial bare
+        # consonant is the intended inherent-/a/ leader syllable.
+        if not leader_split and _has_leading_bare_consonant(segments):
             return
         yield SyllabificationCandidate(
             segments=tuple(segments),
@@ -1107,24 +1494,47 @@ def _has_leading_bare_consonant(segments: list[str]) -> bool:
     return _is_bare_consonant_token(first) and len(first) == 1
 
 
-def _apply_initial_cluster(segments: list[str]) -> bool:
-    """In-place: if ``segments`` begins with ``[C, C2…]`` and (C, C2[0]) is
-    a true cluster, merge the two segments. Mirrors the cluster-merge shape
-    used by ``ClusterStrategy`` but only at the word-initial position."""
-    if len(segments) < 2:
-        return False
-    first, second = segments[0], segments[1]
-    if not (_is_bare_consonant_token(first) and len(first) == 1):
-        return False
-    if not _starts_with_consonant(second):
-        return False
-    if not clusters_tbl.is_cluster(first, second[0]):
-        return False
-    if (first, second[0]) in _RARE_CLUSTERS:
-        return False
-    segments[0] = first + second
-    del segments[1]
-    return True
+def _apply_clusters(segments: list[str]) -> bool:
+    """In-place: wherever a bare consonant segment precedes a segment whose
+    first consonant forms a true cluster with it, merge the two. Mirrors
+    the cluster-merge shape used by ``ClusterStrategy`` over already-built
+    segments.
+
+    Word-initially the merge is unconditional (กระเทียม). Mid-word it is
+    kept on a tight leash — the bare consonant is usually the CODA of the
+    syllable before it, or an Indic linker, not an onset:
+
+    * the previous segment must not be an open vowel-bearing syllable
+      (ฝากลวดลาย keeps ก as ฝาก's coda; ภาพลวงตา keeps พ as ภาพ's), and
+    * the following segment must be a bare CวC frame produced by the
+      ว-nucleus templates (โอดครวญ merges ค + รวญ; อันตราย keeps its
+      ต linker because รา is not such a frame).
+    """
+    changed = False
+    i = 0
+    while i + 1 < len(segments):
+        first, second = segments[i], segments[i + 1]
+        if (
+            _is_bare_consonant_token(first)
+            and len(first) == 1
+            and _starts_with_consonant(second)
+            and clusters_tbl.is_cluster(first, second[0])
+            and (first, second[0]) not in _RARE_CLUSTERS
+        ):
+            mid_word_ok = True
+            if i > 0:
+                prev = segments[i - 1]
+                prev_open_syllable = _is_vowel_bearing(
+                    prev
+                ) and not _has_coda_already(prev)
+                mid_word_ok = not prev_open_syllable
+            if mid_word_ok:
+                segments[i] = first + second
+                del segments[i + 1]
+                changed = True
+                continue
+        i += 1
+    return changed
 
 
 class DFStrategy:
@@ -1135,9 +1545,88 @@ class DFStrategy:
 
     Respects M-821: never the last consonant of the word; never word-initial;
     ง usually excluded.
+
+    Two candidates can come out of this strategy. The generic all-pivots
+    reading keeps its low score — double-function is the marked case and
+    plain coda-folding usually wins. When a pivot sits on a known
+    re-sounding Sanskrit stem (วิทยา, ราชการ — see
+    :mod:`thaiphon.lexicons.df_stems`) a second candidate duplicating
+    only the confirmed pivots is emitted at a winning score.
     """
 
     name = "df"
+
+    @staticmethod
+    def _stem_at(tokens: Sequence[str], i: int) -> str:
+        return tokens[i - 1] + tokens[i]
+
+    # Letters sharing an initial sound with the pivot: when the next
+    # token opens with one of these, the doubling is already written out
+    # (พัทธสีมา = พัท + ธ…, เวชชาชีวะ = เวช + ชา…) and the pivot must not
+    # re-sound a second time.
+    _HOMORGANIC: dict[str, frozenset[str]] = {
+        "ท": frozenset("ทธฑฒถฐ"),
+        "ช": frozenset("ชฌฉ"),
+        "ก": frozenset("กขคฆ"),
+        "ป": frozenset("ปพภผ"),
+        "ต": frozenset("ตฏถฐทธ"),
+        "ส": frozenset("สศษซ"),
+    }
+
+    def _confirmed_candidate(
+        self, tokens: Sequence[str], confirmed: set[int]
+    ) -> SyllabificationCandidate:
+        n = len(tokens)
+        segments: list[str] = []
+        # Linker duplicates stand alone as inherent-/a/ syllables — they
+        # must not absorb following material (เอกชน = เอก + ก + ชน, the
+        # ช belongs to the ชน pair, not to the linker ก).
+        exempt: set[int] = set()
+        for i, tok in enumerate(tokens):
+            if i in confirmed and segments:
+                segments[-1] = segments[-1] + tok
+                exempt.add(len(segments))
+                segments.append(tok)
+                continue
+            if not segments:
+                segments.append(tok)
+                continue
+            prev = segments[-1]
+            prev_is_onset_only = (
+                len(prev) == 1 and prev in consonants_tbl.CONSONANTS
+            ) or (
+                len(prev) == 2
+                and prev[0] in consonants_tbl.CONSONANTS
+                and prev[1] in TONE_MARKS
+            )
+            # Ordinary codas elsewhere in the word fold as MergeStrategy
+            # would: ราชการ → ['ราช','ช','กา','ร'] → ['ราช','ช','การ'];
+            # พิพิธภัณฑ์'s trailing ณฑ์ folds onto ภั. A consonant that
+            # forms an onset unit with the next token stays put so the
+            # C+ร tail keeps its own syllable (ศุลกากร → …กา + กร).
+            if (
+                _is_bare_consonant_token(tok)
+                and (len(segments) - 1) not in exempt
+                and (
+                    any(ch in VOWEL_CHARS for ch in prev)
+                    or prev_is_onset_only
+                )
+                and not _has_coda_already(prev)
+                and not (
+                    len(tok) == 1
+                    and _coda_steals_next_onset(
+                        tok, tokens[i + 1] if i + 1 < n else None
+                    )
+                )
+            ):
+                segments[-1] = prev + tok
+            else:
+                segments.append(tok)
+        return SyllabificationCandidate(
+            segments=tuple(segments),
+            strategy=self.name,
+            score=0.87,
+        )
 
     def generate(
         self, tokens: Sequence[str]
@@ -1145,6 +1634,32 @@ class DFStrategy:
         n = len(tokens)
         if n < 3:
             return
+        confirmed = {
+            i
+            for i in range(1, n - 1)
+            if _is_bare_consonant_token(tokens[i])
+            and len(tokens[i]) == 1
+            and (
+                any(ch in VOWEL_CHARS for ch in tokens[i - 1])
+                # Word-initial bare pair: the stem syllable is the
+                # inherent-/o/ pair itself (มลทิน = มล + ล + ทิน).
+                or (
+                    i == 1
+                    and _is_bare_consonant_token(tokens[0])
+                    and len(tokens[0]) == 1
+                )
+            )
+            and tokens[i + 1][0] in consonants_tbl.CONSONANTS
+            # A following อ opens a vowel-initial syllable — no linker
+            # (เอกอัคร stays aehk + ak…).
+            and tokens[i + 1][0] != O_ANG
+            # Doubling already written out → don't re-sound.
+            and tokens[i + 1][0]
+            not in self._HOMORGANIC.get(tokens[i], frozenset())
+            and df_stems_lex.is_df_stem(self._stem_at(tokens, i))
+        }
+        if confirmed:
+            yield self._confirmed_candidate(tokens, confirmed)
         segments: list[str] = []
         i = 0
         changed = False

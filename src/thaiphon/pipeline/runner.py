@@ -198,9 +198,14 @@ def _find_final(raw: str, onset_end: int) -> tuple[str | None, str]:
             saw_vowel = True
             continue
         # R-CD-002: ย after ◌ี inside a เ-frame is part of the /iːə/
-        # nucleus, not a coda. Same for R-CD-003: อ after ◌ื.
+        # nucleus, not a coda. Same for R-CD-003: อ after ◌ื. A tone mark
+        # riding on the frame (เตี้ย, เขี่ย) sits between the vowel and
+        # the glide — look through it.
         if _pre_vowel_present and idx > 0:
-            prev_ch = post_onset[idx - 1]
+            k = idx - 1
+            while k >= 0 and post_onset[k] in _TONE_MARK_MAP:
+                k -= 1
+            prev_ch = post_onset[k] if k >= 0 else ""
             if ch == letters.YO_YAK and prev_ch == letters.SARA_II:
                 saw_vowel = True
                 continue
@@ -245,6 +250,19 @@ def _derive_syllable(raw: str, *, force_hc: bool = False) -> Syllable:
         body = raw[1:]
 
     onset_info = onset_mod.resolve_onset(body)
+    # A bare two-consonant body with no written vowel is a CLOSED syllable
+    # (M-206 inherent /o/: สากล → กล = gohn; M-308 for final ร: นิกร →
+    # กร = gaawn), not a cluster onset with inherent /a/. Re-resolve with
+    # a single-consonant onset so the second consonant fills the coda
+    # slot and the inherent-vowel rules see a closed shape.
+    if (
+        pre_vowel is None
+        and len(body) == 2
+        and onset_info.consumed == 2
+        and body[0] in consonants_tbl.CONSONANTS
+        and body[1] in consonants_tbl.CONSONANTS
+    ):
+        onset_info = onset_mod.resolve_onset(body[:1])
     onset_end_in_full = (1 if pre_vowel else 0) + onset_info.consumed
 
     final_char, cleaned_raw = _find_final(raw, onset_end_in_full)
@@ -342,7 +360,9 @@ def _apply_silent_h(syl: Syllable) -> Syllable:
 # M-521 aksornam (leader) propagation.
 # HC leaders — when followed by an LC-sonorant without a written vowel,
 # the second syllable takes HIGH effective class for tone.
-_HC_LEADERS: frozenset[str] = frozenset({"ส", "ข", "ฉ", "ผ", "ถ", "ศ", "ษ", "ห"})
+_HC_LEADERS: frozenset[str] = frozenset(
+    {"ส", "ข", "ฉ", "ผ", "ถ", "ศ", "ษ", "ห", "ฝ"}
+)
 # MC leaders (ก/จ/ด/ต/บ/ป/อ) similarly propagate; the second syllable
 # takes MID effective class.
 _MC_LEADERS: frozenset[str] = frozenset({"ก", "จ", "ด", "ต", "บ", "ป", "อ"})
@@ -665,6 +685,18 @@ class PipelineRunner:
                 and length_lex.is_compound_revertible(text)
             ):
                 override = None
+            # M-602 positional form inside an unsegmented compound: when
+            # the word ENDS with a long-citation morpheme written as its
+            # own segment (ห้องน้ำ, ใบไม้, ตอนเช้า), that final syllable
+            # keeps the long vowel even though the whole word has no
+            # override entry.
+            if (
+                override is None
+                and is_final_in_compound
+                and len(cand.segments) >= 2
+                and length_lex.is_final_segment_long(cand.segments[-1])
+            ):
+                override = VowelLength.LONG
             if override is not None and len(syllables) >= 1:
                 new_last = _length_override(syllables[-1], override)
                 syllables = syllables[:-1] + (new_last,)

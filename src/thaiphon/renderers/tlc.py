@@ -90,6 +90,9 @@ _CODA_CONTEXT: dict[tuple[str, VowelLength, str], str] = {
     ("u", VowelLength.SHORT, "j"): "y",
     ("uə", VowelLength.LONG, "j"): "y",
     ("e", VowelLength.LONG, "j"): "y",
+    # โ◌ย: long /oː/ + /j/ spells ``ooy`` (โดย → dooy) — vowel context
+    # ``oo`` plus this ``y``.
+    ("o", VowelLength.LONG, "j"): "y",
     # Short /i/ + /w/ glide renders as ``iu`` (etalon convention).
     ("i", VowelLength.SHORT, "w"): "u",
     # R-CENT-001 Case B: long /iː/ + /w/ glide — phonology is /iːw/ but
@@ -245,8 +248,10 @@ def _lexicon_coda_override(
 
 # Vowel surface-form overrides that depend on the coda (R-204 etc).
 _VOWEL_CONTEXT: dict[tuple[str, VowelLength, str], str] = {
-    # เ◌ย short /ɤ/ + /j/ → etalon ``eeu`` + ``y``.
+    # เ◌ย /ɤ/ + /j/ → etalon ``eeu`` + ``y`` regardless of length
+    # (เลย → leeuy, เฉลย → cha-leeuy).
     ("ɤ", VowelLength.SHORT, "j"): "eeu",
+    ("ɤ", VowelLength.LONG, "j"): "eeu",
     # R-CENT-001 Case B: long /iː/ before a /w/ glide is spelled ``iaa``
     # even though the phonology is simple /iː/. Combined with the matching
     # coda override ``o``, this yields ``iaao`` for words like เขียว,
@@ -257,6 +262,10 @@ _VOWEL_CONTEXT: dict[tuple[str, VowelLength, str], str] = {
     # coda override ``y`` this yields ``uay`` — the etalon convention,
     # parallel to the ``iaa``/``iaao`` case above.
     ("uə", VowelLength.LONG, "j"): "ua",
+    # Short /u/ before /j/ keeps its plain ``u`` (คุย → khuy, not khooy);
+    # long /oː/ before /j/ spells ``oo`` (โดย → dooy, not do:hi).
+    ("u", VowelLength.SHORT, "j"): "u",
+    ("o", VowelLength.LONG, "j"): "oo",
 }
 
 

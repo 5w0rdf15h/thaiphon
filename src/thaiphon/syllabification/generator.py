@@ -82,13 +82,19 @@ class CandidateGenerator:
         self, tokens: Sequence[str]
     ) -> tuple[SyllabificationCandidate, ...]:
         out: list[SyllabificationCandidate] = []
-        seen: set[tuple[str, ...]] = set()
+        best_index: dict[tuple[str, ...], int] = {}
         for strategy in self._strategies:
             for cand in strategy.generate(tokens):
                 key = cand.segments
-                if key in seen:
+                if key in best_index:
+                    # Same segmentation reached by several strategies —
+                    # keep the highest-scoring claim so a later, more
+                    # specific strategy isn't shadowed by a generic one.
+                    idx = best_index[key]
+                    if cand.score > out[idx].score:
+                        out[idx] = cand
                     continue
-                seen.add(key)
+                best_index[key] = len(out)
                 out.append(cand)
                 if len(out) >= self._cap:
                     return tuple(out)

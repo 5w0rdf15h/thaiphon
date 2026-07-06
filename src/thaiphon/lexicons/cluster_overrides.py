@@ -23,7 +23,6 @@ TRUE_CLUSTER_WORDS: frozenset[str] = frozenset(
         "\u0e02\u0e27\u0e31\u0e0d",               # ขวัญ
         "\u0e01\u0e27\u0e32\u0e07",               # กวาง
         "\u0e04\u0e27\u0e31\u0e19",               # ควัน
-        "\u0e04\u0e27\u0e1a\u0e04\u0e38\u0e21",  # ควบคุม
         "\u0e01\u0e27\u0e32\u0e14",               # กวาด
         "\u0e02\u0e27\u0e32",                     # ขวา
         "\u0e02\u0e27\u0e32\u0e07",               # ขวาง
@@ -49,6 +48,10 @@ TRUE_CLUSTER_WORDS: frozenset[str] = frozenset(
 INSERT_U_WORDS: frozenset[str] = frozenset(
     {
         "\u0e02\u0e27\u0e14",                                 # ขวด
+        # ควบ /kʰûap/ — the ว is the /uːə/ nucleus, not a cluster
+        # glide (ควบคุม = khuap-khum). Looked up per frame window
+        # so the reading holds inside compounds.
+        "\u0e04\u0e27\u0e1a",                                 # ควบ
     }
 )
 

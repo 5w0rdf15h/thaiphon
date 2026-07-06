@@ -6,6 +6,43 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0]
+
+### Fixed
+
+- **Vowel frames now compose with complex onsets.** The ``◌อ◌`` /ɔː/ and
+  ``◌ว◌`` /uːə/ frames parse correctly behind consonant clusters, ``ห``-leading
+  and ``อักษรนำ`` leaders instead of stranding the coda as a spurious syllable:
+  ``กลอง`` → ``glaawng``, ``ตรอก`` → ``dtraawk``, ``หลอด`` → ``laawt``,
+  ``หลวง`` → ``luaang``, ``สงวน`` → ``sa-nguaan``, ``โอดครวญ`` → ``o:ht-khruaan``.
+- **Tone marks and ``การันต์`` tails no longer break coda detection.**
+  ``เที่ยว`` → ``thiaao``, ``เตี้ย`` → ``dtiia``, ``กอล์ฟ`` → ``gaawp``,
+  ``นิวยอร์ก`` → ``niu-yaawk``.
+- **Bare two-consonant syllables read as closed.** A vowel-less ``CC`` body
+  takes inherent /o/ with the second consonant as coda (``สากล`` → ``saa-gohn``,
+  ``มงคล`` → ``mohng-khohn``); a final ``ร`` takes long /ɔː/ (``นคร`` →
+  ``na-khaawn``, ``พร`` → ``phaawn``).
+- **Word-final ``C + ร`` disambiguated by the anchor vowel.** A complete anchor
+  vowel yields ``/Cɔːn/`` (``นิกร`` → ``ni-gaawn``, ``อากร`` → ``aa-gaawn``); a
+  dangling ``◌ั`` keeps the silent-``ร`` coda reading (``สมัคร`` → ``sa-mak``).
+- **Re-sounding stems restore the linking syllable.** Sanskrit/Pali stems whose
+  final consonant doubles as coda and linking-/a/ onset now read in full:
+  ``วิทยาลัย`` → ``wit-tha-yaa-lai``, ``ราชการ`` → ``raat-cha-gaan``, ``ตุ๊กตา``
+  → ``dtook-ga-dtaa``, ``มลทิน`` → ``mohn-la-thin``.
+- **Pre-vowel hop restricted to sonorant targets.** The hop fires onto sonorant
+  (or ``ด``) onsets — ``แสดง`` → ``sa-daaeng`` — but not others (``โกสน`` →
+  ``go:h-sohn``, ``เบตง`` → ``baeh-dtohng``); it also handles a ``◌็``-marked
+  target (``เสด็จ`` → ``sa-det``).
+
+### Changed
+
+- **Positional vowel length inside unsegmented compounds.** ``น้ำ`` / ``ไม้`` /
+  ``เช้า`` / ``เท้า`` keep their long citation vowel word-finally (``ห้องน้ำ`` →
+  ``haawng-naam``) while staying short elsewhere (``น้ำตาล`` → ``nam-dtaan``).
+- **tlc glide-vowel spellings.** Short /u/ before /j/ spells ``uy`` (``คุย`` →
+  ``khuy``); long /oː/ before /j/ spells ``ooy`` (``โดย`` → ``dooy``); long /ɤː/
+  before /j/ spells ``eeuy`` (``เฉลย`` → ``cha-leeuy``).
+
 ## [0.6.3]
 
 ### Fixed

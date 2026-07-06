@@ -52,6 +52,19 @@ _COMPOUND_REVERTIBLE: frozenset[str] = frozenset(
     }
 )
 
+# M-602 morphemes that keep their long citation vowel when they are the
+# FINAL element of a compound written as one word (ห้องน้ำ, ใบไม้,
+# ตอนเช้า, ข้อเท้า). Deliberately narrower than the override map: ได้ /
+# ใช้ / เจ้า vary per compound and stay with the derived form.
+_FINAL_SEGMENT_LONG: frozenset[str] = frozenset(
+    {
+        "น้ำ",              # น้ำ
+        "ไม้",              # ไม้
+        "เช้า",        # เช้า
+        "เท้า",        # เท้า
+    }
+)
+
 LENGTH_OVERRIDES: Mapping[str, VowelLength] = MappingProxyType(_OVERRIDES)
 
 
@@ -66,4 +79,15 @@ def is_compound_revertible(word: str) -> bool:
     return word in _COMPOUND_REVERTIBLE
 
 
-__all__ = ["LENGTH_OVERRIDES", "is_compound_revertible", "lookup"]
+def is_final_segment_long(segment: str) -> bool:
+    """M-602 positional form: True when ``segment``, as the final element
+    of a compound, keeps its long citation vowel."""
+    return segment in _FINAL_SEGMENT_LONG
+
+
+__all__ = [
+    "LENGTH_OVERRIDES",
+    "is_compound_revertible",
+    "is_final_segment_long",
+    "lookup",
+]
